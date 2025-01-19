@@ -7,6 +7,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import { Plus, Calculator } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -40,21 +51,30 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useForm } from "react-hook-form";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { Plus, Calculator } from "lucide-react";
+import { BarChart, Bar, } from "recharts";
+
+
+// Mock data for the profit indicators chart
+const profitData = [
+  { month: "Jan", value: 45 },
+  { month: "Feb", value: 42 },
+  { month: "Mar", value: 47 },
+  { month: "Apr", value: 44 },
+  { month: "May", value: 46 },
+  { month: "Jun", value: 48 },
+];
+
+// Mock data for risk assessment
+const riskData = [
+  { name: "Business/Model Competitiveness", value: 85 },
+  { name: "Compliance Score", value: 65 },
+  { name: "Audit Risk", value: 45 },
+];
 
 export default function Benchmarking() {
   const { comparables, analyses, isLoading, addComparable, createAnalysis } = useBenchmarking();
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  
+
   const form = useForm({
     defaultValues: {
       name: "",
@@ -96,10 +116,36 @@ export default function Benchmarking() {
     });
   };
 
+  const metrics = [
+    {
+      title: "Operating Margin",
+      value: "15.2%",
+      description: "Year to date",
+    },
+    {
+      title: "Net Rate",
+      value: "1.24%",
+      description: "Quarter average",
+    },
+    {
+      title: "Gross Margin",
+      value: "8.5%",
+      description: "Current period",
+    },
+    {
+      title: "Return Rate",
+      value: "22.4%",
+      description: "Annual projection",
+    },
+  ];
+
   return (
     <div className="p-8 space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Benchmarking Analysis</h1>
+        <div>
+          <h1 className="text-3xl font-bold">Benchmarking Analysis</h1>
+          <p className="text-muted-foreground">Compare your transfer pricing metrics against industry standards</p>
+        </div>
         <div className="flex gap-2">
           <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
             <DialogTrigger asChild>
@@ -171,6 +217,71 @@ export default function Benchmarking() {
         </div>
       </div>
 
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {metrics.map((metric) => (
+          <Card key={metric.title}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">
+                {metric.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{metric.value}</div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {metric.description}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Profit Level Indicators Chart */}
+        <Card className="col-span-2">
+          <CardHeader>
+            <CardTitle>Profit Level Indicators</CardTitle>
+            <CardDescription>Compare with industry benchmarks over time</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={profitData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#8884d8"
+                    strokeWidth={2}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Risk Assessment */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Risk Assessment</CardTitle>
+            <CardDescription>Overall scoring and indicators</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {riskData.map((risk) => (
+              <div key={risk.name} className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>{risk.name}</span>
+                  <span className="font-medium">{risk.value}%</span>
+                </div>
+                <Progress value={risk.value} className="h-2" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
