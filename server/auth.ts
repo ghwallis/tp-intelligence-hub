@@ -5,30 +5,30 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, insertUserSchema } from "@db/schema";
+import { users, insertUserSchema, type User } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
 
 const scryptAsync = promisify(scrypt);
+
+// Crypto utilities for password hashing and verification
 const crypto = {
-  hash: async (password: string) => {
-    const salt = randomBytes(16).toString("hex");
-    const buf = (await scryptAsync(password, salt, 64)) as Buffer;
-    return `${buf.toString("hex")}.${salt}`;
+  async hash(password: string): Promise<string> {
+    const salt = randomBytes(16).toString('hex');
+    const derivedKey = await scryptAsync(password, salt, 32);
+    return `${derivedKey.toString('hex')}:${salt}`;
   },
-  compare: async (suppliedPassword: string, storedPassword: string) => {
-    const [hashedPassword, salt] = storedPassword.split(".");
-    if (!hashedPassword || !salt) {
-      return false;
-    }
-    const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
-    const suppliedPasswordBuf = (await scryptAsync(
-      suppliedPassword,
-      salt,
-      64
-    )) as Buffer;
-    return timingSafeEqual(hashedPasswordBuf, suppliedPasswordBuf);
-  },
+
+  async verify(password: string, hash: string): Promise<boolean> {
+    const [hashedPassword, salt] = hash.split(':');
+    if (!hashedPassword || !salt) return false;
+
+    const derivedKey = await scryptAsync(password, salt, 32);
+    const keyBuffer = Buffer.from(hashedPassword, 'hex');
+    const derivedBuffer = Buffer.from(derivedKey);
+
+    return timingSafeEqual(keyBuffer, derivedBuffer);
+  }
 };
 
 declare global {
@@ -73,19 +73,21 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Incorrect username." });
         }
 
-        // Create a properly hashed password if it doesn't contain a salt
-        if (!user.password.includes('.')) {
-          user.password = await crypto.hash(user.password);
+        // Check if password needs to be re-hashed (if it doesn't contain a salt separator)
+        if (!user.password.includes(':')) {
+          const hashedPassword = await crypto.hash(user.password);
           await db
             .update(users)
-            .set({ password: user.password })
+            .set({ password: hashedPassword })
             .where(eq(users.id, user.id));
+          user.password = hashedPassword;
         }
 
-        const isMatch = await crypto.compare(password, user.password);
-        if (!isMatch) {
+        const isValid = await crypto.verify(password, user.password);
+        if (!isValid) {
           return done(null, false, { message: "Incorrect password." });
         }
+
         return done(null, user);
       } catch (err) {
         return done(err);
