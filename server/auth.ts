@@ -1,5 +1,8 @@
 import passport from "passport";
 import { IVerifyOptions, Strategy as LocalStrategy } from "passport-local";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
+import { Strategy as MicrosoftStrategy } from "passport-microsoft";
+import { Strategy as AppleStrategy } from "passport-apple";
 import { type Express } from "express";
 import session from "express-session";
 import createMemoryStore from "memorystore";
@@ -37,6 +40,22 @@ declare global {
   }
 }
 
+export async function createInitialAdmin() {
+  const [existingAdmin] = await db
+    .select()
+    .from(users)
+    .where(eq(users.username, 'admin'))
+    .limit(1);
+
+  if (!existingAdmin) {
+    const hashedPassword = await crypto.hash('admin123');
+    await db.insert(users).values({
+      username: 'admin',
+      password: hashedPassword,
+    });
+  }
+}
+
 export function setupAuth(app: Express) {
   const MemoryStore = createMemoryStore(session);
   const sessionSettings: session.SessionOptions = {
@@ -60,6 +79,7 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Local Strategy
   passport.use(
     new LocalStrategy(async (username, password, done) => {
       try {
@@ -73,16 +93,6 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Incorrect username." });
         }
 
-        // Check if password needs to be re-hashed (if it doesn't contain a salt separator)
-        if (!user.password.includes(':')) {
-          const hashedPassword = await crypto.hash(user.password);
-          await db
-            .update(users)
-            .set({ password: hashedPassword })
-            .where(eq(users.id, user.id));
-          user.password = hashedPassword;
-        }
-
         const isValid = await crypto.verify(password, user.password);
         if (!isValid) {
           return done(null, false, { message: "Incorrect password." });
@@ -94,6 +104,43 @@ export function setupAuth(app: Express) {
       }
     })
   );
+
+  // Social Login Strategies
+  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    passport.use(
+      new GoogleStrategy(
+        {
+          clientID: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          callbackURL: "/api/auth/google/callback",
+        },
+        async (_accessToken, _refreshToken, profile, done) => {
+          try {
+            let [user] = await db
+              .select()
+              .from(users)
+              .where(eq(users.username, profile.emails![0].value))
+              .limit(1);
+
+            if (!user) {
+              const [newUser] = await db
+                .insert(users)
+                .values({
+                  username: profile.emails![0].value,
+                  password: await crypto.hash(randomBytes(32).toString('hex')),
+                })
+                .returning();
+              user = newUser;
+            }
+
+            return done(null, user);
+          } catch (err) {
+            return done(err as Error);
+          }
+        }
+      )
+    );
+  }
 
   passport.serializeUser((user, done) => {
     done(null, user.id);
@@ -112,6 +159,7 @@ export function setupAuth(app: Express) {
     }
   });
 
+  // Auth Routes
   app.post("/api/register", async (req, res, next) => {
     try {
       const result = insertUserSchema.safeParse(req.body);
@@ -181,4 +229,13 @@ export function setupAuth(app: Express) {
     }
     res.status(401).send("Not logged in");
   });
+
+  // Social Login Routes
+  app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+  app.get("/api/auth/google/callback", passport.authenticate("google", { failureRedirect: "/login" }), (_req, res) => {
+    res.redirect("/");
+  });
+
+  // Create initial admin user
+  createInitialAdmin().catch(console.error);
 }

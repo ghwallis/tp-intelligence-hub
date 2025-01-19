@@ -7,6 +7,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import {
   Form,
@@ -21,6 +22,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { SiGoogle, SiApple, SiMicrosoft } from "react-icons/si";
 
 const authSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -64,7 +66,7 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
-      <Card className="w-[350px]">
+      <Card className="w-[400px]">
         <CardHeader>
           <CardTitle>Transfer Pricing Hub</CardTitle>
           <CardDescription>
@@ -72,6 +74,11 @@ export default function AuthPage() {
               ? "Login to your account"
               : "Create a new account"}
           </CardDescription>
+          <div className="text-sm text-muted-foreground mt-2">
+            Default credentials:<br/>
+            Username: admin<br/>
+            Password: admin123
+          </div>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -107,18 +114,39 @@ export default function AuthPage() {
               </Button>
             </form>
           </Form>
-          <div className="mt-4 text-center">
-            <Button
-              variant="link"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-xs"
-            >
-              {isLogin
-                ? "Need an account? Register"
-                : "Already have an account? Login"}
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border"></div>
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            <Button variant="outline" size="lg" className="w-full" onClick={() => window.location.href = "/api/auth/google"}>
+              <SiGoogle className="h-5 w-5" />
+            </Button>
+            <Button variant="outline" size="lg" className="w-full" disabled>
+              <SiApple className="h-5 w-5" />
+            </Button>
+            <Button variant="outline" size="lg" className="w-full" disabled>
+              <SiMicrosoft className="h-5 w-5" />
             </Button>
           </div>
         </CardContent>
+        <CardFooter>
+          <Button
+            variant="link"
+            onClick={() => setIsLogin(!isLogin)}
+            className="w-full text-xs"
+          >
+            {isLogin
+              ? "Need an account? Register"
+              : "Already have an account? Login"}
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );
