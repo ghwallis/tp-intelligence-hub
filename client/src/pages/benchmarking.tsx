@@ -51,8 +51,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useForm } from "react-hook-form";
-import { BarChart, Bar, } from "recharts";
-
+import { BarChart, Bar } from "recharts";
+import { DataSources } from "@/components/data-sources";
 
 // Mock data for the profit indicators chart
 const profitData = [
@@ -69,6 +69,14 @@ const riskData = [
   { name: "Business/Model Competitiveness", value: 85 },
   { name: "Compliance Score", value: 65 },
   { name: "Audit Risk", value: 45 },
+];
+
+// Mock data for financial ratios
+const mockFinancialRatios = [
+  { name: "Operating Margin", value: 15.2 },
+  { name: "Return on Assets", value: 8.5 },
+  { name: "Working Capital", value: 12.4 },
+  { name: "Debt to Equity", value: 1.8 },
 ];
 
 export default function Benchmarking() {
@@ -198,7 +206,6 @@ export default function Benchmarking() {
                       </FormItem>
                     )}
                   />
-                  {/* Add other form fields for financial data */}
                   <Button type="submit" className="w-full">
                     Add Company
                   </Button>
@@ -282,6 +289,7 @@ export default function Benchmarking() {
           </CardContent>
         </Card>
       </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
@@ -321,7 +329,7 @@ export default function Benchmarking() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={analyses?.[0]?.financialRatios || []}>
+              <BarChart data={analyses?.[0]?.financialRatios || mockFinancialRatios}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -332,6 +340,19 @@ export default function Benchmarking() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Data Sources Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Data Sources</CardTitle>
+          <CardDescription>
+            Manage your benchmarking data sources and connections
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DataSources />
+        </CardContent>
+      </Card>
     </div>
   );
 }
