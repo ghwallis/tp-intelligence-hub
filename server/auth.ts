@@ -18,6 +18,9 @@ const crypto = {
   },
   compare: async (suppliedPassword: string, storedPassword: string) => {
     const [hashedPassword, salt] = storedPassword.split(".");
+    if (!hashedPassword || !salt) {
+      return false;
+    }
     const hashedPasswordBuf = Buffer.from(hashedPassword, "hex");
     const suppliedPasswordBuf = (await scryptAsync(
       suppliedPassword,
@@ -69,6 +72,16 @@ export function setupAuth(app: Express) {
         if (!user) {
           return done(null, false, { message: "Incorrect username." });
         }
+
+        // Create a properly hashed password if it doesn't contain a salt
+        if (!user.password.includes('.')) {
+          user.password = await crypto.hash(user.password);
+          await db
+            .update(users)
+            .set({ password: user.password })
+            .where(eq(users.id, user.id));
+        }
+
         const isMatch = await crypto.compare(password, user.password);
         if (!isMatch) {
           return done(null, false, { message: "Incorrect password." });
