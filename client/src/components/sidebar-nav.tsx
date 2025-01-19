@@ -9,6 +9,7 @@ import {
   BarChart2,
   LogOut,
   ChevronDown,
+  Network,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/hooks/use-user";
@@ -53,6 +54,11 @@ const navItems = [
         href: "/benchmarking/data-sources",
       },
     ],
+  },
+  {
+    title: "System Integrations",
+    href: "/integrations",
+    icon: Network,
   },
 ];
 

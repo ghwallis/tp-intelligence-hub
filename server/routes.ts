@@ -2,8 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { documents, templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts } from "@db/schema";
-import { eq } from "drizzle-orm";
+import { documents, templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts, systemIntegrations, integrationLogs } from "@db/schema";
+import { eq, desc } from "drizzle-orm";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -113,6 +113,83 @@ export function registerRoutes(app: Express): Server {
     const alerts = await db.select().from(monitoringAlerts)
       .where(eq(monitoringAlerts.userId, req.user.id));
     res.json(alerts);
+  });
+
+  // System Integration Routes
+  app.get("/api/integrations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    const userIntegrations = await db.select().from(systemIntegrations)
+      .where(eq(systemIntegrations.userId, req.user.id));
+    res.json(userIntegrations);
+  });
+
+  app.post("/api/integrations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    const { name, type, config } = req.body;
+
+    try {
+      const [integration] = await db.insert(systemIntegrations)
+        .values({
+          name,
+          type,
+          config,
+          status: 'inactive',
+          userId: req.user.id
+        })
+        .returning();
+
+      await db.insert(integrationLogs)
+        .values({
+          integrationId: integration.id,
+          eventType: 'created',
+          status: 'success',
+          details: { message: 'Integration created successfully' }
+        });
+
+      res.json(integration);
+    } catch (error: any) {
+      console.error("Failed to create integration:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.put("/api/integrations/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    const { id } = req.params;
+    const { name, type, config, status } = req.body;
+
+    try {
+      const [integration] = await db
+        .update(systemIntegrations)
+        .set({ name, type, config, status, updatedAt: new Date() })
+        .where(eq(systemIntegrations.id, parseInt(id)))
+        .returning();
+
+      await db.insert(integrationLogs)
+        .values({
+          integrationId: integration.id,
+          eventType: 'updated',
+          status: 'success',
+          details: { message: 'Integration updated successfully' }
+        });
+
+      res.json(integration);
+    } catch (error: any) {
+      console.error("Failed to update integration:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.get("/api/integrations/:id/logs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    const { id } = req.params;
+
+    const logs = await db.select()
+      .from(integrationLogs)
+      .where(eq(integrationLogs.integrationId, parseInt(id)))
+      .orderBy(desc(integrationLogs.createdAt));
+
+    res.json(logs);
   });
 
   // Chat API endpoint

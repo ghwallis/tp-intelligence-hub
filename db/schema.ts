@@ -78,6 +78,26 @@ export const monitoringAlerts = pgTable("monitoring_alerts", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
+export const systemIntegrations = pgTable("system_integrations", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  type: text("type").notNull(), // 'erp' or 'tax'
+  config: jsonb("config").notNull(),
+  status: text("status").notNull().default('inactive'),
+  userId: integer("user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const integrationLogs = pgTable("integration_logs", {
+  id: serial("id").primaryKey(),
+  integrationId: integer("integration_id").references(() => systemIntegrations.id),
+  eventType: text("event_type").notNull(),
+  status: text("status").notNull(),
+  details: jsonb("details"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export type User = typeof users.$inferSelect;
@@ -90,3 +110,7 @@ export type ComplianceCheck = typeof complianceChecks.$inferSelect;
 export type ComparableCompany = typeof comparableCompanies.$inferSelect;
 export type BenchmarkingAnalysis = typeof benchmarkingAnalysis.$inferSelect;
 export type MonitoringAlert = typeof monitoringAlerts.$inferSelect;
+export type SystemIntegration = typeof systemIntegrations.$inferSelect;
+export type NewSystemIntegration = typeof systemIntegrations.$inferInsert;
+export type IntegrationLog = typeof integrationLogs.$inferSelect;
+export type NewIntegrationLog = typeof integrationLogs.$inferInsert;

@@ -13,6 +13,7 @@ import RiskAssessment from "@/pages/risk-assessment";
 import Compliance from "@/pages/compliance";
 import BenchmarkingAnalytics from "@/pages/benchmarking/analytics";
 import BenchmarkingDataSources from "@/pages/benchmarking/data-sources";
+import Integrations from "@/pages/integrations";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { ChatBot } from "@/components/chat-bot";
 
@@ -43,6 +44,7 @@ function Router() {
           <Route path="/compliance" component={Compliance} />
           <Route path="/benchmarking/analytics" component={BenchmarkingAnalytics} />
           <Route path="/benchmarking/data-sources" component={BenchmarkingDataSources} />
+          <Route path="/integrations" component={Integrations} />
           <Route component={NotFound} />
         </Switch>
       </main>
