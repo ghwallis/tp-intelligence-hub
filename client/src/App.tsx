@@ -11,6 +11,7 @@ import Documents from "@/pages/documents";
 import Templates from "@/pages/templates";
 import RiskAssessment from "@/pages/risk-assessment";
 import Compliance from "@/pages/compliance";
+import Benchmarking from "@/pages/benchmarking";
 import { SidebarNav } from "@/components/sidebar-nav";
 
 function Router() {
@@ -38,6 +39,7 @@ function Router() {
           <Route path="/templates" component={Templates} />
           <Route path="/risk-assessment" component={RiskAssessment} />
           <Route path="/compliance" component={Compliance} />
+          <Route path="/benchmarking" component={Benchmarking} />
           <Route component={NotFound} />
         </Switch>
       </main>

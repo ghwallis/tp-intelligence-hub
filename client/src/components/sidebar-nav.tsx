@@ -6,6 +6,7 @@ import {
   FileBox,
   AlertTriangle,
   ClipboardCheck,
+  BarChart2,
   LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,11 @@ const navItems = [
     title: "Compliance",
     href: "/compliance",
     icon: ClipboardCheck,
+  },
+  {
+    title: "Benchmarking",
+    href: "/benchmarking",
+    icon: BarChart2,
   },
 ];
 

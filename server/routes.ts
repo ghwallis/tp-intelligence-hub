@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { documents, templates, riskAssessments, complianceChecks } from "@db/schema";
+import { documents, templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts } from "@db/schema";
 import { eq } from "drizzle-orm";
 
 export function registerRoutes(app: Express): Server {
@@ -62,6 +62,52 @@ export function registerRoutes(app: Express): Server {
       .values({ jurisdiction, requirements, status, documentId, userId: req.user.id })
       .returning();
     res.json(check);
+  });
+
+  // New Benchmarking Routes
+  app.get("/api/comparables", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    const comparables = await db.select().from(comparableCompanies)
+      .where(eq(comparableCompanies.userId, req.user.id));
+    res.json(comparables);
+  });
+
+  app.post("/api/comparables", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    const { name, industry, region, size, financialData } = req.body;
+    const [comparable] = await db.insert(comparableCompanies)
+      .values({ name, industry, region, size, financialData, userId: req.user.id })
+      .returning();
+    res.json(comparable);
+  });
+
+  app.get("/api/benchmarking", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    const analyses = await db.select().from(benchmarkingAnalysis)
+      .where(eq(benchmarkingAnalysis.userId, req.user.id));
+    res.json(analyses);
+  });
+
+  app.post("/api/benchmarking", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    const { comparableIds, financialRatios, rejectionMatrix, quartileRanges } = req.body;
+    const [analysis] = await db.insert(benchmarkingAnalysis)
+      .values({
+        userId: req.user.id,
+        comparableIds,
+        financialRatios,
+        rejectionMatrix,
+        quartileRanges
+      })
+      .returning();
+    res.json(analysis);
+  });
+
+  app.get("/api/monitoring-alerts", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    const alerts = await db.select().from(monitoringAlerts)
+      .where(eq(monitoringAlerts.userId, req.user.id));
+    res.json(alerts);
   });
 
   const httpServer = createServer(app);
