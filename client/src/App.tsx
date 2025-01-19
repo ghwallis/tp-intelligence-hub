@@ -11,7 +11,8 @@ import Documents from "@/pages/documents";
 import Templates from "@/pages/templates";
 import RiskAssessment from "@/pages/risk-assessment";
 import Compliance from "@/pages/compliance";
-import Benchmarking from "@/pages/benchmarking";
+import BenchmarkingAnalytics from "@/pages/benchmarking/analytics";
+import BenchmarkingDataSources from "@/pages/benchmarking/data-sources";
 import { SidebarNav } from "@/components/sidebar-nav";
 
 function Router() {
@@ -39,7 +40,8 @@ function Router() {
           <Route path="/templates" component={Templates} />
           <Route path="/risk-assessment" component={RiskAssessment} />
           <Route path="/compliance" component={Compliance} />
-          <Route path="/benchmarking" component={Benchmarking} />
+          <Route path="/benchmarking/analytics" component={BenchmarkingAnalytics} />
+          <Route path="/benchmarking/data-sources" component={BenchmarkingDataSources} />
           <Route component={NotFound} />
         </Switch>
       </main>
