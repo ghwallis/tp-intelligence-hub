@@ -14,6 +14,7 @@ import Compliance from "@/pages/compliance";
 import BenchmarkingAnalytics from "@/pages/benchmarking/analytics";
 import BenchmarkingDataSources from "@/pages/benchmarking/data-sources";
 import { SidebarNav } from "@/components/sidebar-nav";
+import { ChatBot } from "@/components/chat-bot";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -45,6 +46,7 @@ function Router() {
           <Route component={NotFound} />
         </Switch>
       </main>
+      <ChatBot />
     </div>
   );
 }

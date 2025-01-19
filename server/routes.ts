@@ -4,6 +4,11 @@ import { setupAuth } from "./auth";
 import { db } from "@db";
 import { documents, templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts } from "@db/schema";
 import { eq } from "drizzle-orm";
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -64,7 +69,7 @@ export function registerRoutes(app: Express): Server {
     res.json(check);
   });
 
-  // New Benchmarking Routes
+  // Benchmarking routes
   app.get("/api/comparables", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
     const comparables = await db.select().from(comparableCompanies)
@@ -108,6 +113,47 @@ export function registerRoutes(app: Express): Server {
     const alerts = await db.select().from(monitoringAlerts)
       .where(eq(monitoringAlerts.userId, req.user.id));
     res.json(alerts);
+  });
+
+  // Chat API endpoint
+  app.post("/api/chat", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      const { message } = req.body;
+
+      if (!message) {
+        return res.status(400).send("Message is required");
+      }
+
+      const systemPrompt = `You are an expert transfer pricing assistant. Help users with transfer pricing related questions, compliance requirements, and risk assessment. Your responses should be professional and based on best practices in transfer pricing.
+
+Current context: The user is working with a Transfer Pricing Intelligence Platform that includes:
+- Document management
+- Risk assessment tools
+- Compliance tracking
+- Benchmarking analysis
+- Data source integration
+
+Provide concise, practical advice based on this context.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message }
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+      });
+
+      const aiResponse = response.choices[0]?.message?.content || "I apologize, I couldn't process your request.";
+      res.json({ message: aiResponse });
+
+    } catch (error: any) {
+      console.error("Chat API Error:", error);
+      res.status(500).send(error.message || "Failed to process chat message");
+    }
   });
 
   const httpServer = createServer(app);
