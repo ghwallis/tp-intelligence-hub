@@ -22,7 +22,7 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { SiGoogle, SiApple, SiMicrosoft } from "react-icons/si";
+import { SiGoogle } from "react-icons/si";
 
 const authSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
@@ -124,15 +124,15 @@ export default function AuthPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <Button variant="outline" size="lg" className="w-full" onClick={() => window.location.href = "/api/auth/google"}>
-              <SiGoogle className="h-5 w-5" />
-            </Button>
-            <Button variant="outline" size="lg" className="w-full" disabled>
-              <SiApple className="h-5 w-5" />
-            </Button>
-            <Button variant="outline" size="lg" className="w-full" disabled>
-              <SiMicrosoft className="h-5 w-5" />
+          <div className="flex justify-center">
+            <Button 
+              variant="outline" 
+              size="lg" 
+              className="w-full"
+              onClick={() => window.location.href = "/api/auth/google"}
+            >
+              <SiGoogle className="h-5 w-5 mr-2" />
+              Continue with Google
             </Button>
           </div>
         </CardContent>

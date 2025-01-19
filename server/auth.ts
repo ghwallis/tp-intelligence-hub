@@ -8,7 +8,7 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, insertUserSchema, type User } from "@db/schema";
+import { users, insertUserSchema, type SelectUser } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
 
@@ -18,41 +18,51 @@ const scryptAsync = promisify(scrypt);
 const crypto = {
   async hash(password: string): Promise<string> {
     const salt = randomBytes(16).toString('hex');
-    const derivedKey = await scryptAsync(password, salt, 32);
+    const derivedKey = (await scryptAsync(password, salt, 32)) as Buffer;
     return `${derivedKey.toString('hex')}:${salt}`;
   },
 
   async verify(password: string, hash: string): Promise<boolean> {
-    const [hashedPassword, salt] = hash.split(':');
-    if (!hashedPassword || !salt) return false;
+    try {
+      const [hashedPassword, salt] = hash.split(':');
+      if (!hashedPassword || !salt) return false;
 
-    const derivedKey = await scryptAsync(password, salt, 32);
-    const keyBuffer = Buffer.from(hashedPassword, 'hex');
-    const derivedBuffer = Buffer.from(derivedKey);
-
-    return timingSafeEqual(keyBuffer, derivedBuffer);
+      const derivedKey = (await scryptAsync(password, salt, 32)) as Buffer;
+      const keyBuffer = Buffer.from(hashedPassword, 'hex');
+      return timingSafeEqual(keyBuffer, derivedKey);
+    } catch (error) {
+      console.error("Password verification error:", error);
+      return false;
+    }
   }
 };
 
 declare global {
   namespace Express {
-    interface User extends User {}
+    interface User extends SelectUser {}
   }
 }
 
 export async function createInitialAdmin() {
-  const [existingAdmin] = await db
-    .select()
-    .from(users)
-    .where(eq(users.username, 'admin'))
-    .limit(1);
+  try {
+    // Delete existing admin if any
+    await db.delete(users).where(eq(users.username, 'admin'));
 
-  if (!existingAdmin) {
+    // Create fresh admin user
+    console.log("Creating admin user...");
     const hashedPassword = await crypto.hash('admin123');
-    await db.insert(users).values({
-      username: 'admin',
-      password: hashedPassword,
-    });
+    const [newAdmin] = await db.insert(users)
+      .values({
+        username: 'admin',
+        password: hashedPassword,
+      })
+      .returning();
+    console.log("Admin user created successfully");
+    return newAdmin;
+
+  } catch (error) {
+    console.error("Error creating admin user:", error);
+    throw error;
   }
 }
 
@@ -105,7 +115,7 @@ export function setupAuth(app: Express) {
     })
   );
 
-  // Social Login Strategies
+  // Google Strategy
   if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     passport.use(
       new GoogleStrategy(
@@ -119,14 +129,14 @@ export function setupAuth(app: Express) {
             let [user] = await db
               .select()
               .from(users)
-              .where(eq(users.username, profile.emails![0].value))
+              .where(eq(users.username, profile.emails?.[0].value || profile.id))
               .limit(1);
 
             if (!user) {
               const [newUser] = await db
                 .insert(users)
                 .values({
-                  username: profile.emails![0].value,
+                  username: profile.emails?.[0].value || profile.id,
                   password: await crypto.hash(randomBytes(32).toString('hex')),
                 })
                 .returning();
@@ -232,9 +242,13 @@ export function setupAuth(app: Express) {
 
   // Social Login Routes
   app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
-  app.get("/api/auth/google/callback", passport.authenticate("google", { failureRedirect: "/login" }), (_req, res) => {
-    res.redirect("/");
-  });
+
+  app.get("/api/auth/google/callback",
+    passport.authenticate("google", { failureRedirect: "/" }),
+    (_req, res) => {
+      res.redirect("/");
+    }
+  );
 
   // Create initial admin user
   createInitialAdmin().catch(console.error);
