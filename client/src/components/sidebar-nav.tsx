@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   FileText,
-  FileTemplate,
+  FileBox,
   AlertTriangle,
   ClipboardCheck,
   LogOut,
@@ -25,7 +25,7 @@ const navItems = [
   {
     title: "Templates",
     href: "/templates",
-    icon: FileTemplate,
+    icon: FileBox,
   },
   {
     title: "Risk Assessment",
@@ -49,7 +49,7 @@ export function SidebarNav() {
         <h2 className="text-lg font-semibold">Transfer Pricing Hub</h2>
         <p className="text-sm text-sidebar-foreground/60">Welcome, {user?.username}</p>
       </div>
-      
+
       <nav className="flex-1 space-y-1 px-4">
         {navItems.map((item) => {
           const Icon = item.icon;
