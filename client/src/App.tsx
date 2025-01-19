@@ -4,14 +4,7 @@ import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { useUser } from "@/hooks/use-user";
 import { Loader2 } from "lucide-react";
-import { SidebarNav } from "@/components/sidebar-nav";
 import AuthPage from "@/pages/auth-page";
-
-import Dashboard from "@/pages/dashboard";
-import Documents from "@/pages/documents";
-import Templates from "@/pages/templates";
-import RiskAssessment from "@/pages/risk-assessment";
-import Compliance from "@/pages/compliance";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -30,15 +23,10 @@ function Router() {
   }
 
   return (
-    <div className="flex h-screen">
-      <SidebarNav />
-      <main className="flex-1 overflow-y-auto bg-background">
+    <div className="flex h-screen bg-background">
+      <main className="flex-1 overflow-y-auto">
         <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/documents" component={Documents} />
-          <Route path="/templates" component={Templates} />
-          <Route path="/risk-assessment" component={RiskAssessment} />
-          <Route path="/compliance" component={Compliance} />
+          <Route path="/" component={() => <div className="p-8">Welcome to Transfer Pricing Hub</div>} />
           <Route component={NotFound} />
         </Switch>
       </main>
