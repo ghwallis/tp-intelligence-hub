@@ -24,6 +24,7 @@ import Team from "@/pages/team";
 import Settings from "@/pages/settings";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { ChatBot } from "@/components/chat-bot";
+import { ThemeProvider } from "@/components/theme-provider";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -73,10 +74,12 @@ function Router() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
-    </QueryClientProvider>
+    <ThemeProvider defaultTheme="system">
+      <QueryClientProvider client={queryClient}>
+        <Router />
+        <Toaster />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
 
