@@ -5,6 +5,9 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Progress } from "@/components/ui/progress";
 import { SearchFilter, type SearchFilters } from "@/components/search-filter";
 import { FeedbackDialog } from "@/components/ui/feedback-dialog";
+import { HeatMap } from "@/components/ui/heat-map";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
 
 type Audit = {
   jurisdiction: string;
@@ -78,6 +81,19 @@ export default function AuditManagement() {
   const [filteredDisputes, setFilteredDisputes] = useState(mockDisputes);
   const [filteredResolutions, setFilteredResolutions] = useState(mockResolutions);
 
+  // Fetch risk assessment data
+  const { data: riskAssessment, isLoading: isLoadingRisk } = useQuery({
+    queryKey: ['/api/compliance/risk-assessment'],
+    queryFn: async () => {
+      const response = await fetch('/api/compliance/risk-assessment', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch risk assessment');
+      return response.json();
+    }
+  });
+
   const handleFilterChange = (filters: SearchFilters) => {
     const filteredAuditResults = mockAudits.filter((audit) => {
       const matchesKeyword = filters.keyword
@@ -123,7 +139,7 @@ export default function AuditManagement() {
             Track audits and manage dispute resolution processes
           </p>
         </div>
-        <FeedbackDialog complianceCheckId={1} />
+        <FeedbackDialog />
       </div>
 
       <SearchFilter onFilterChange={handleFilterChange} />
@@ -137,6 +153,17 @@ export default function AuditManagement() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
+          {/* Risk Heat Map */}
+          {isLoadingRisk ? (
+            <Card>
+              <CardContent className="flex items-center justify-center min-h-[400px]">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </CardContent>
+            </Card>
+          ) : (
+            <HeatMap data={riskAssessment || []} />
+          )}
+
           <Card>
             <CardHeader>
               <CardTitle>Status Overview</CardTitle>

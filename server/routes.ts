@@ -438,6 +438,74 @@ Provide concise, practical advice based on this context.`;
   });
 
 
+  // Add the risk assessment endpoint
+  app.post("/api/compliance/risk-assessment", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      // Get existing compliance checks and documents for context
+      const checks = await db.select().from(complianceChecks)
+        .where(eq(complianceChecks.userId, req.user.id));
+
+      const docs = await db.select().from(documents)
+        .where(eq(documents.userId, req.user.id))
+        .limit(5);
+
+      // Prepare the context for OpenAI
+      const context = {
+        complianceChecks: checks.map(c => ({
+          jurisdiction: c.jurisdiction,
+          requirements: c.requirements,
+          status: c.status
+        })),
+        recentDocuments: docs.map(d => ({
+          title: d.title,
+          status: d.status,
+          metadata: d.metadata
+        }))
+      };
+
+      const systemPrompt = `You are an expert transfer pricing risk assessment AI.
+Analyze the provided compliance context and generate risk scores for different areas.
+Focus on:
+1. Documentation Compliance
+2. Pricing Methods
+3. Intercompany Transactions
+4. Economic Analysis
+5. Local Regulations
+6. Global Standards
+
+For each area:
+- Provide a risk score (0-100)
+- Give a brief explanation of the risk level
+- Consider both current compliance status and potential future risks
+
+Format the response as a JSON array of objects with 'area', 'score', and 'description' fields.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: JSON.stringify(context) }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7,
+      });
+
+      const aiResponse = response.choices[0]?.message?.content;
+      if (!aiResponse) {
+        throw new Error("Failed to generate risk assessment");
+      }
+
+      const riskAssessment = JSON.parse(aiResponse);
+      res.json(riskAssessment);
+
+    } catch (error: any) {
+      console.error("Risk assessment error:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
   // Create HTTP server
   const httpServer = createServer(app);
 
