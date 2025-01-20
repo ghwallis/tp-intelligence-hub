@@ -8,11 +8,42 @@
   }
 
   :root {
-    --transition-duration: 200ms;
+    --transition-duration: 150ms;
   }
 
   body {
     @apply font-sans antialiased bg-background text-foreground;
+  }
+
+  /* Improved dark mode text visibility */
+  .dark, .dark-grey {
+    --foreground: 210 40% 98%;
+    --card-foreground: 210 40% 98%;
+    --popover-foreground: 210 40% 98%;
+    --primary-foreground: 210 40% 98%;
+    --secondary-foreground: 210 40% 98%;
+    --muted-foreground: 217.2 32.6% 82%;
+    --accent-foreground: 210 40% 98%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --card: 222.2 84% 4.9%;
+    --popover: 222.2 84% 4.9%;
+    --primary: 210 40% 98%;
+    --secondary: 217.2 32.6% 17.5%;
+    --muted: 217.2 32.6% 17.5%;
+    --accent: 217.2 32.6% 17.5%;
+  }
+
+  .dark-grey {
+    --background: 220 13% 18%;
+    --card: 220 13% 23%;
+    --popover: 220 13% 18%;
+    --primary: 220 13% 90%;
+    --secondary: 220 13% 25%;
+    --muted: 220 13% 25%;
+    --accent: 220 13% 25%;
   }
 
   /* Smooth theme transitions */
