@@ -36,6 +36,38 @@ fs.mkdir('uploads', { recursive: true }).catch(console.error);
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
+  // Add a route to create initial compliance check if needed
+  app.post("/api/compliance-checks/init", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      // Check if we already have compliance checks
+      const existingChecks = await db.select().from(complianceChecks).limit(1);
+
+      if (existingChecks.length === 0) {
+        // Create an initial compliance check
+        const [check] = await db.insert(complianceChecks)
+          .values({
+            jurisdiction: "Global",
+            requirements: {
+              category: "Transfer Pricing",
+              items: ["Documentation", "Benchmarking", "Risk Assessment"]
+            },
+            status: "active",
+            userId: req.user.id
+          })
+          .returning();
+
+        return res.json(check);
+      }
+
+      return res.json(existingChecks[0]);
+    } catch (error: any) {
+      console.error("Failed to initialize compliance check:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
   // Add the theme update endpoint
   app.post("/api/user/theme", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");

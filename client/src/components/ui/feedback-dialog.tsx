@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, Loader2 } from "lucide-react";
 
 type FeedbackFormData = {
   rating: number;
@@ -36,14 +36,23 @@ type FeedbackFormData = {
   comment: string;
 };
 
-interface FeedbackDialogProps {
-  complianceCheckId: number;
-}
-
-export function FeedbackDialog({ complianceCheckId }: FeedbackDialogProps) {
+export function FeedbackDialog() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Fetch compliance check
+  const { data: complianceCheck, isLoading } = useQuery({
+    queryKey: ['/api/compliance-checks/init'],
+    queryFn: async () => {
+      const response = await fetch('/api/compliance-checks/init', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to get compliance check');
+      return response.json();
+    }
+  });
 
   const form = useForm<FeedbackFormData>({
     defaultValues: {
@@ -62,8 +71,9 @@ export function FeedbackDialog({ complianceCheckId }: FeedbackDialogProps) {
         },
         body: JSON.stringify({
           ...data,
-          complianceCheckId,
+          complianceCheckId: complianceCheck?.id,
         }),
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -89,6 +99,10 @@ export function FeedbackDialog({ complianceCheckId }: FeedbackDialogProps) {
       });
     },
   });
+
+  if (isLoading) {
+    return <Loader2 className="h-4 w-4 animate-spin" />;
+  }
 
   const onSubmit = (data: FeedbackFormData) => {
     feedbackMutation.mutate(data);
@@ -190,7 +204,7 @@ export function FeedbackDialog({ complianceCheckId }: FeedbackDialogProps) {
               </Button>
               <Button
                 type="submit"
-                disabled={feedbackMutation.isPending}
+                disabled={feedbackMutation.isPending || !complianceCheck}
               >
                 Submit Feedback
               </Button>
