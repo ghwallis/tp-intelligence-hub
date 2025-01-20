@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useDocuments } from "@/hooks/use-documents";
 import { useTemplates } from "@/hooks/use-templates";
-import { CollaborationPanel } from "@/components/collaboration-panel";
+import { DocumentViewer } from "@/components/document-viewer";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
-import { FileText, Plus, Users } from "lucide-react";
+import { FileText, Plus, Users, File } from "lucide-react";
 import { format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
@@ -45,6 +45,7 @@ export default function Documents() {
   const { templates } = useTemplates();
   const [open, setOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<number | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   const form = useForm({
     defaultValues: {
@@ -63,6 +64,8 @@ export default function Documents() {
       console.error("Failed to create document:", error);
     }
   };
+
+  const selectedDocument = documents?.find(doc => doc.id === selectedDoc);
 
   return (
     <div className="p-8 space-y-8">
@@ -157,7 +160,10 @@ export default function Documents() {
           <TableBody>
             {documents?.map((doc) => (
               <TableRow key={doc.id}>
-                <TableCell className="flex items-center gap-2">
+                <TableCell className="flex items-center gap-2 cursor-pointer" onClick={() => {
+                  setSelectedDoc(doc.id);
+                  setViewerOpen(true);
+                }}>
                   <FileText className="h-4 w-4" />
                   {doc.title}
                 </TableCell>
@@ -171,31 +177,52 @@ export default function Documents() {
                   {format(new Date(doc.updatedAt), "MMM d, yyyy")}
                 </TableCell>
                 <TableCell className="text-right">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant={selectedDoc === doc.id ? "default" : "secondary"}
-                          size="icon"
-                          className="relative"
-                          onClick={() => setSelectedDoc(selectedDoc === doc.id ? null : doc.id)}
-                        >
-                          <Users className="h-5 w-5" />
-                          {selectedDoc === doc.id && (
-                            <Badge
-                              variant="default"
-                              className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center"
-                            >
-                              •
-                            </Badge>
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Toggle collaboration panel</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <div className="flex justify-end gap-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              setSelectedDoc(doc.id);
+                              setViewerOpen(true);
+                            }}
+                          >
+                            <File className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Open document</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant={selectedDoc === doc.id ? "default" : "secondary"}
+                            size="icon"
+                            className="relative"
+                            onClick={() => setSelectedDoc(selectedDoc === doc.id ? null : doc.id)}
+                          >
+                            <Users className="h-5 w-5" />
+                            {selectedDoc === doc.id && (
+                              <Badge
+                                variant="default"
+                                className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center"
+                              >
+                                •
+                              </Badge>
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Toggle collaboration panel</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -203,7 +230,20 @@ export default function Documents() {
         </Table>
       </div>
 
-      {selectedDoc && <CollaborationPanel documentId={selectedDoc} />}
+      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+        <DialogContent className="max-w-6xl h-[90vh]">
+          {selectedDocument && (
+            <DocumentViewer
+              documentId={selectedDocument.id}
+              title={selectedDocument.title}
+              content={selectedDocument.content}
+              type={selectedDocument.title.toLowerCase().endsWith('.pdf') ? 'pdf' : 'text'}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {selectedDoc && !viewerOpen && <CollaborationPanel documentId={selectedDoc} />}
     </div>
   );
 }
