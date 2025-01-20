@@ -1,14 +1,11 @@
 import passport from "passport";
 import { IVerifyOptions, Strategy as LocalStrategy } from "passport-local";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
-import { Strategy as MicrosoftStrategy } from "passport-microsoft";
-import { Strategy as AppleStrategy } from "passport-apple";
 import { type Express } from "express";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { users, insertUserSchema, type SelectUser } from "@db/schema";
+import { users, insertUserSchema } from "@db/schema";
 import { db } from "@db";
 import { eq } from "drizzle-orm";
 
@@ -37,9 +34,14 @@ const crypto = {
   }
 };
 
+// Extend express user object with our schema
 declare global {
   namespace Express {
-    interface User extends SelectUser {}
+    interface User {
+      id: number;
+      username: string;
+      password: string;
+    }
   }
 }
 
@@ -114,43 +116,6 @@ export function setupAuth(app: Express) {
       }
     })
   );
-
-  // Google Strategy
-  if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-    passport.use(
-      new GoogleStrategy(
-        {
-          clientID: process.env.GOOGLE_CLIENT_ID,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          callbackURL: "/api/auth/google/callback",
-        },
-        async (_accessToken, _refreshToken, profile, done) => {
-          try {
-            let [user] = await db
-              .select()
-              .from(users)
-              .where(eq(users.username, profile.emails?.[0].value || profile.id))
-              .limit(1);
-
-            if (!user) {
-              const [newUser] = await db
-                .insert(users)
-                .values({
-                  username: profile.emails?.[0].value || profile.id,
-                  password: await crypto.hash(randomBytes(32).toString('hex')),
-                })
-                .returning();
-              user = newUser;
-            }
-
-            return done(null, user);
-          } catch (err) {
-            return done(err as Error);
-          }
-        }
-      )
-    );
-  }
 
   passport.serializeUser((user, done) => {
     done(null, user.id);
@@ -239,16 +204,6 @@ export function setupAuth(app: Express) {
     }
     res.status(401).send("Not logged in");
   });
-
-  // Social Login Routes
-  app.get("/api/auth/google", passport.authenticate("google", { scope: ["profile", "email"] }));
-
-  app.get("/api/auth/google/callback",
-    passport.authenticate("google", { failureRedirect: "/" }),
-    (_req, res) => {
-      res.redirect("/");
-    }
-  );
 
   // Create initial admin user
   createInitialAdmin().catch(console.error);
