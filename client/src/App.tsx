@@ -8,12 +8,20 @@ import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Documents from "@/pages/documents";
-import Templates from "@/pages/templates";
-import RiskAssessment from "@/pages/risk-assessment";
+import DocumentProcessing from "@/pages/document-processing";
+import Controversy from "@/pages/controversy";
+import Documentation from "@/pages/documentation";
+import Analytics from "@/pages/analytics";
+import Benchmarking from "@/pages/benchmarking";
+import AIInsights from "@/pages/ai-insights";
 import Compliance from "@/pages/compliance";
-import BenchmarkingAnalytics from "@/pages/benchmarking/analytics";
-import BenchmarkingDataSources from "@/pages/benchmarking/data-sources";
+import VersionControl from "@/pages/version-control";
 import Integrations from "@/pages/integrations";
+import Workflow from "@/pages/workflow";
+import Deadlines from "@/pages/deadlines";
+import Collaboration from "@/pages/collaboration";
+import Team from "@/pages/team";
+import Settings from "@/pages/settings";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { ChatBot } from "@/components/chat-bot";
 
@@ -36,17 +44,27 @@ function Router() {
     <div className="flex h-screen bg-background">
       <SidebarNav />
       <main className="flex-1 overflow-y-auto">
-        <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/documents" component={Documents} />
-          <Route path="/templates" component={Templates} />
-          <Route path="/risk-assessment" component={RiskAssessment} />
-          <Route path="/compliance" component={Compliance} />
-          <Route path="/benchmarking/analytics" component={BenchmarkingAnalytics} />
-          <Route path="/benchmarking/data-sources" component={BenchmarkingDataSources} />
-          <Route path="/integrations" component={Integrations} />
-          <Route component={NotFound} />
-        </Switch>
+        <div className="container mx-auto p-6">
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/documents/upload" component={Documents} />
+            <Route path="/documents/processing" component={DocumentProcessing} />
+            <Route path="/controversy" component={Controversy} />
+            <Route path="/docs" component={Documentation} />
+            <Route path="/analytics" component={Analytics} />
+            <Route path="/benchmarking" component={Benchmarking} />
+            <Route path="/ai-insights" component={AIInsights} />
+            <Route path="/compliance" component={Compliance} />
+            <Route path="/version-control" component={VersionControl} />
+            <Route path="/integrations" component={Integrations} />
+            <Route path="/workflow" component={Workflow} />
+            <Route path="/deadlines" component={Deadlines} />
+            <Route path="/collaboration" component={Collaboration} />
+            <Route path="/team" component={Team} />
+            <Route path="/settings" component={Settings} />
+            <Route component={NotFound} />
+          </Switch>
+        </div>
       </main>
       <ChatBot />
     </div>

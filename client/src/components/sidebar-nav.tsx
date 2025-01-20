@@ -2,160 +2,182 @@ import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
-  FileText,
-  FileBox,
+  Upload,
+  FileSpreadsheet,
   AlertTriangle,
-  ClipboardCheck,
+  FileText,
   BarChart2,
-  LogOut,
-  ChevronDown,
+  Scale,
+  Brain,
+  ShieldCheck,
+  GitBranch,
   Network,
+  Workflow,
+  Clock,
+  Users as UsersIcon,
+  Settings as SettingsIcon,
+  MessageSquare,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/hooks/use-user";
-import { useState } from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
-const navItems = [
+const mainNavItems = [
   {
     title: "Dashboard",
     href: "/",
     icon: LayoutDashboard,
   },
   {
-    title: "Documents",
-    href: "/documents",
+    title: "Document Upload",
+    href: "/documents/upload",
+    icon: Upload,
+  },
+  {
+    title: "Document Processing",
+    href: "/documents/processing",
+    icon: FileSpreadsheet,
+  },
+  {
+    title: "Controversy Management",
+    href: "/controversy",
+    icon: AlertTriangle,
+  },
+  {
+    title: "Documentation",
+    href: "/docs",
     icon: FileText,
   },
+];
+
+const insightsNavItems = [
   {
-    title: "Templates",
-    href: "/templates",
-    icon: FileBox,
+    title: "Analytics",
+    href: "/analytics",
+    icon: BarChart2,
   },
   {
-    title: "Risk Assessment",
-    href: "/risk-assessment",
-    icon: AlertTriangle,
+    title: "Benchmarking",
+    href: "/benchmarking",
+    icon: Scale,
+  },
+  {
+    title: "AI Insights",
+    href: "/ai-insights",
+    icon: Brain,
   },
   {
     title: "Compliance",
     href: "/compliance",
-    icon: ClipboardCheck,
+    icon: ShieldCheck,
   },
   {
-    title: "Benchmarking",
-    icon: BarChart2,
-    subitems: [
-      {
-        title: "Analytics",
-        href: "/benchmarking/analytics",
-      },
-      {
-        title: "Data Sources",
-        href: "/benchmarking/data-sources",
-      },
-    ],
+    title: "Version Control",
+    href: "/version-control",
+    icon: GitBranch,
   },
+];
+
+const systemNavItems = [
   {
-    title: "System Integrations",
+    title: "ERP Integration",
     href: "/integrations",
     icon: Network,
+  },
+  {
+    title: "Workflow",
+    href: "/workflow",
+    icon: Workflow,
+  },
+  {
+    title: "Deadlines",
+    href: "/deadlines",
+    icon: Clock,
+  },
+  {
+    title: "Collaboration",
+    href: "/collaboration",
+    icon: MessageSquare,
+  },
+];
+
+const settingsNavItems = [
+  {
+    title: "Team",
+    href: "/team",
+    icon: UsersIcon,
+  },
+  {
+    title: "Settings",
+    href: "/settings",
+    icon: SettingsIcon,
   },
 ];
 
 export function SidebarNav() {
   const [location] = useLocation();
   const { user, logout } = useUser();
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
-  const toggleExpand = (title: string) => {
-    setExpandedItems(prev =>
-      prev.includes(title)
-        ? prev.filter(item => item !== title)
-        : [...prev, title]
+  const NavItem = ({ item }: { item: typeof mainNavItems[0] }) => {
+    const Icon = item.icon;
+    const isActive = location === item.href;
+
+    return (
+      <Link href={item.href}>
+        <a
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors font-medium",
+            isActive
+              ? "bg-sidebar-accent text-sidebar-accent-foreground"
+              : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+          )}
+        >
+          <Icon className="h-4 w-4" />
+          {item.title}
+        </a>
+      </Link>
     );
   };
 
+  const NavSection = ({ title, items }: { title: string; items: typeof mainNavItems }) => (
+    <div className="space-y-2">
+      <h2 className="px-4 text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider">
+        {title}
+      </h2>
+      {items.map((item) => (
+        <NavItem key={item.title} item={item} />
+      ))}
+    </div>
+  );
+
   return (
-    <div className="flex h-screen flex-col bg-sidebar text-sidebar-foreground">
+    <div className="flex h-screen min-w-[240px] flex-col bg-sidebar border-r border-sidebar-border">
       <div className="p-6">
-        <h2 className="text-lg font-semibold">Transfer Pricing Hub</h2>
-        <p className="text-sm text-sidebar-foreground/60">Welcome, {user?.username}</p>
+        <h2 className="text-lg font-semibold text-sidebar-foreground">
+          Transfer Pricing Hub
+        </h2>
+        <p className="text-sm text-sidebar-foreground/60">
+          Welcome, {user?.username}
+        </p>
       </div>
-
-      <nav className="flex-1 space-y-1 px-4">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isExpanded = expandedItems.includes(item.title);
-          const isActive = location.startsWith(item.href || '');
-
-          return (
-            <div key={item.title}>
-              {item.subitems ? (
-                <>
-                  <button
-                    onClick={() => toggleExpand(item.title)}
-                    className={cn(
-                      "flex w-full items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                      isActive
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "hover:bg-sidebar-accent/50"
-                    )}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className="h-4 w-4" />
-                      {item.title}
-                    </div>
-                    <ChevronDown
-                      className={cn(
-                        "h-4 w-4 transition-transform",
-                        isExpanded ? "rotate-180" : ""
-                      )}
-                    />
-                  </button>
-                  {isExpanded && (
-                    <div className="ml-9 mt-1 space-y-1">
-                      {item.subitems.map((subitem) => (
-                        <Link key={subitem.href} href={subitem.href}>
-                          <a
-                            className={cn(
-                              "block rounded-lg px-3 py-2 text-sm transition-colors",
-                              location === subitem.href
-                                ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                : "hover:bg-sidebar-accent/50"
-                            )}
-                          >
-                            {subitem.title}
-                          </a>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <Link href={item.href!}>
-                  <a
-                    className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                      location === item.href
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                        : "hover:bg-sidebar-accent/50"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {item.title}
-                  </a>
-                </Link>
-              )}
-            </div>
-          );
-        })}
-      </nav>
-
-      <div className="p-4">
+      <ScrollArea className="flex-1 px-3">
+        <div className="space-y-6 py-2">
+          <NavSection title="Main" items={mainNavItems} />
+          <Separator className="mx-3 bg-sidebar-foreground/10" />
+          <NavSection title="Insights & Analytics" items={insightsNavItems} />
+          <Separator className="mx-3 bg-sidebar-foreground/10" />
+          <NavSection title="System" items={systemNavItems} />
+          <Separator className="mx-3 bg-sidebar-foreground/10" />
+          <NavSection title="Settings" items={settingsNavItems} />
+        </div>
+      </ScrollArea>
+      <div className="p-4 border-t border-sidebar-border">
         <Button
           variant="ghost"
-          className="w-full justify-start gap-2"
-          onClick={() => logout()}
+          className="w-full justify-start gap-2 text-sm font-medium text-sidebar-foreground/60 hover:text-sidebar-foreground"
+          onClick={logout}
         >
           <LogOut className="h-4 w-4" />
           Logout
