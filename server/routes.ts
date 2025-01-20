@@ -6,17 +6,27 @@ import { documents, templates, riskAssessments, complianceChecks, comparableComp
 import { eq, desc } from "drizzle-orm";
 import OpenAI from "openai";
 import { WebSocketServer } from 'ws';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs/promises';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-interface CollaborationMessage {
-  type: 'join' | 'leave' | 'cursor' | 'edit' | 'comment';
-  sessionId: number;
-  userId: number;
-  content: any;
-}
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: 'uploads/',
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage });
+
+// Ensure uploads directory exists
+fs.mkdir('uploads', { recursive: true }).catch(console.error);
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -28,6 +38,65 @@ export function registerRoutes(app: Express): Server {
     res.json(docs);
   });
 
+  // File upload endpoint
+  app.post("/api/documents/upload", upload.single('file'), async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    if (!req.file) return res.status(400).send("No file uploaded");
+
+    try {
+      const fileContent = await fs.readFile(req.file.path);
+      const [doc] = await db.insert(documents)
+        .values({
+          title: req.file.originalname,
+          content: req.file.path, // Store the file path
+          userId: req.user.id,
+          metadata: {
+            size: req.file.size,
+            mimetype: req.file.mimetype,
+            originalName: req.file.originalname
+          }
+        })
+        .returning();
+
+      res.json(doc);
+    } catch (error) {
+      console.error("Upload error:", error);
+      res.status(500).send("Failed to process upload");
+    }
+  });
+
+  // File download endpoint
+  app.get("/api/documents/:id/download", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      const [doc] = await db
+        .select()
+        .from(documents)
+        .where(eq(documents.id, parseInt(req.params.id)))
+        .limit(1);
+
+      if (!doc) {
+        return res.status(404).send("Document not found");
+      }
+
+      // Verify user has access to this document
+      if (doc.userId !== req.user.id) {
+        return res.status(403).send("Access denied");
+      }
+
+      const filePath = doc.content;
+      if (!filePath || typeof filePath !== 'string') {
+        return res.status(404).send("File not found");
+      }
+
+      res.download(filePath, doc.title);
+    } catch (error) {
+      console.error("Download error:", error);
+      res.status(500).send("Failed to download file");
+    }
+  });
+
   app.post("/api/documents", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
     const { title, content, templateId, metadata } = req.body;
@@ -36,7 +105,6 @@ export function registerRoutes(app: Express): Server {
       .returning();
     res.json(doc);
   });
-
   // Templates API
   app.get("/api/templates", async (_req, res) => {
     const allTemplates = await db.select().from(templates);

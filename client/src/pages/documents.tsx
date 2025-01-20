@@ -35,33 +35,45 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
-import { FileText, Plus, Users, File } from "lucide-react";
+import { FileText, Plus, Users, File, Upload } from "lucide-react";
 import { format } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Documents() {
-  const { documents, isLoading, createDocument } = useDocuments();
+  const { documents, isLoading, createDocument, uploadDocument } = useDocuments();
   const { templates } = useTemplates();
   const [open, setOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<number | null>(null);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm({
     defaultValues: {
       title: "",
       content: "",
       templateId: "",
+      file: null as File | null,
     },
   });
 
   const onSubmit = async (data: any) => {
     try {
-      await createDocument(data);
+      if (data.file) {
+        await uploadDocument(data.file);
+      } else {
+        await createDocument(data);
+      }
       setOpen(false);
       form.reset();
     } catch (error) {
       console.error("Failed to create document:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to create document. Please try again.",
+      });
     }
   };
 
@@ -91,6 +103,34 @@ export default function Documents() {
             </DialogHeader>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="file"
+                  render={({ field: { value, onChange, ...field } }) => (
+                    <FormItem>
+                      <FormLabel>Upload File</FormLabel>
+                      <FormControl>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="file"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                onChange(file);
+                                form.setValue("title", file.name);
+                              }
+                            }}
+                            {...field}
+                          />
+                          <Upload className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <div className="text-sm text-muted-foreground mb-4">
+                  Or create a document from scratch:
+                </div>
                 <FormField
                   control={form.control}
                   name="title"
