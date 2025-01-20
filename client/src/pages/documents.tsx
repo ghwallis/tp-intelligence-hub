@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useDocuments } from "@/hooks/use-documents";
 import { useTemplates } from "@/hooks/use-templates";
-import { DocumentViewer } from "@/components/document-viewer";
 import {
   Dialog,
   DialogContent,
@@ -18,279 +17,106 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useForm } from "react-hook-form";
-import { FileText, Plus, Users, File, Upload } from "lucide-react";
-import { format } from "date-fns";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { FileText, Upload } from "lucide-react";
+import { format } from "date-fns";
 
 export default function Documents() {
-  const { documents, isLoading, createDocument, uploadDocument } = useDocuments();
-  const { templates } = useTemplates();
+  const { documents, isLoading, uploadDocument } = useDocuments();
   const [open, setOpen] = useState(false);
-  const [selectedDoc, setSelectedDoc] = useState<number | null>(null);
-  const [viewerOpen, setViewerOpen] = useState(false);
   const { toast } = useToast();
 
-  const form = useForm({
-    defaultValues: {
-      title: "",
-      content: "",
-      templateId: "",
-      file: null as File | null,
-    },
-  });
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-  const onSubmit = async (data: any) => {
     try {
-      if (data.file) {
-        await uploadDocument(data.file);
-      } else {
-        await createDocument(data);
-      }
-      setOpen(false);
-      form.reset();
+      await uploadDocument(file);
+      toast({
+        title: "Success",
+        description: "File uploaded successfully",
+      });
     } catch (error) {
-      console.error("Failed to create document:", error);
+      console.error("Failed to upload document:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to create document. Please try again.",
+        description: "Failed to upload document. Please try again.",
       });
     }
   };
 
-  const selectedDocument = documents?.find(doc => doc.id === selectedDoc);
+  const openDocument = (documentId: number, title: string) => {
+    // Construct the document URL
+    const baseUrl = window.location.origin;
+    const downloadUrl = `${baseUrl}/api/documents/${documentId}/download`;
+    const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(downloadUrl)}`;
 
-  const getDocumentType = (filename: string): "text" | "pdf" | "excel" => {
-    const extension = filename.toLowerCase().split('.').pop();
-    if (extension === 'pdf') return 'pdf';
-    if (extension === 'xlsx' || extension === 'xls') return 'excel';
-    return 'text';
+    // Open in new tab
+    window.open(officeUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <div className="p-8 space-y-8">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Documents</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Document
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New Document</DialogTitle>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="file"
-                  render={({ field: { value, onChange, ...field } }) => (
-                    <FormItem>
-                      <FormLabel>Upload File</FormLabel>
-                      <FormControl>
-                        <div className="flex items-center gap-2">
-                          <Input
-                            type="file"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                onChange(file);
-                                form.setValue("title", file.name);
-                              }
-                            }}
-                            {...field}
-                          />
-                          <Upload className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <div className="text-sm text-muted-foreground mb-4">
-                  Or create a document from scratch:
-                </div>
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title</FormLabel>
-                      <FormControl>
-                        <Input {...field} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="templateId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Template</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a template" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {templates?.map((template) => (
-                            <SelectItem
-                              key={template.id}
-                              value={template.id.toString()}
-                            >
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Content</FormLabel>
-                      <FormControl>
-                        <Textarea {...field} rows={10} />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full">
-                  Create Document
-                </Button>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </div>
+    <div className="p-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="mb-8 flex justify-between items-center">
+          <h2 className="text-3xl font-bold">All Documents</h2>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload New
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Upload Document</DialogTitle>
+              </DialogHeader>
+              <Input
+                type="file"
+                onChange={handleFileUpload}
+                accept=".xlsx,.xls,.doc,.docx,.pdf,.txt"
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead>Template</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Last Updated</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {documents?.map((doc) => (
-              <TableRow key={doc.id}>
-                <TableCell className="flex items-center gap-2 cursor-pointer" onClick={() => {
-                  setSelectedDoc(doc.id);
-                  setViewerOpen(true);
-                }}>
-                  <FileText className="h-4 w-4" />
-                  {doc.title}
-                </TableCell>
-                <TableCell>
-                  {templates?.find((t) => t.id === doc.templateId)?.name}
-                </TableCell>
-                <TableCell>
-                  {format(new Date(doc.createdAt), "MMM d, yyyy")}
-                </TableCell>
-                <TableCell>
-                  {format(new Date(doc.updatedAt), "MMM d, yyyy")}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            onClick={() => {
-                              setSelectedDoc(doc.id);
-                              setViewerOpen(true);
-                            }}
-                          >
-                            <File className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Open document</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant={selectedDoc === doc.id ? "default" : "secondary"}
-                            size="icon"
-                            className="relative"
-                            onClick={() => setSelectedDoc(selectedDoc === doc.id ? null : doc.id)}
-                          >
-                            <Users className="h-5 w-5" />
-                            {selectedDoc === doc.id && (
-                              <Badge
-                                variant="default"
-                                className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center"
-                              >
-                                •
-                              </Badge>
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Toggle collaboration panel</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                </TableCell>
+        <div className="bg-white rounded-lg border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Modified</TableHead>
+                <TableHead>Owner</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {documents?.map((doc) => (
+                <TableRow 
+                  key={doc.id}
+                  className="cursor-pointer hover:bg-gray-50"
+                  onClick={() => openDocument(doc.id, doc.title)}
+                >
+                  <TableCell className="font-medium flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-blue-500" />
+                    {doc.title}
+                  </TableCell>
+                  <TableCell>{format(new Date(doc.updatedAt), 'MMM d, yyyy')}</TableCell>
+                  <TableCell>You</TableCell>
+                </TableRow>
+              ))}
+              {!documents?.length && (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                    No documents yet. Upload your first document to get started.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
-
-      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
-        <DialogContent className="max-w-6xl h-[90vh]">
-          {selectedDocument && (
-            <DocumentViewer
-              documentId={selectedDocument.id}
-              title={selectedDocument.title}
-              content={selectedDocument.content}
-              type={getDocumentType(selectedDocument.title)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {selectedDoc && !viewerOpen && <CollaborationPanel documentId={selectedDoc} />}
     </div>
   );
 }
