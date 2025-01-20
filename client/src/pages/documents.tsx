@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { useToast } from "@/hooks/use-toast";
 import { FileText, Upload, Download, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
@@ -74,6 +75,15 @@ export default function Documents() {
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   };
 
+  const getDocumentStatus = (doc: any) => {
+    // This is an example of how to determine document status
+    // In a real app, this would come from the document metadata
+    if (doc.metadata?.status === 'completed') return 'completed';
+    if (doc.metadata?.status === 'processing') return 'upcoming';
+    if (doc.metadata?.status === 'review') return 'action-needed';
+    return 'compliant';
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -106,7 +116,7 @@ export default function Documents() {
               <TableHead className="text-foreground/70">Name</TableHead>
               <TableHead className="text-foreground/70">Modified</TableHead>
               <TableHead className="text-foreground/70">File size</TableHead>
-              <TableHead className="text-foreground/70">Sharing</TableHead>
+              <TableHead className="text-foreground/70">Status</TableHead>
               <TableHead className="text-foreground/70">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -121,7 +131,9 @@ export default function Documents() {
                   {doc.updatedAt ? format(new Date(doc.updatedAt), 'MMM d, yyyy') : 'N/A'}
                 </TableCell>
                 <TableCell className="text-foreground/70">{formatFileSize(doc.metadata?.size)}</TableCell>
-                <TableCell className="text-foreground/70">Private</TableCell>
+                <TableCell>
+                  <StatusBadge status={getDocumentStatus(doc)} />
+                </TableCell>
                 <TableCell>
                   <div className="flex gap-2">
                     <Button

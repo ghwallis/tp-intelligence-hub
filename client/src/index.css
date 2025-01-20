@@ -38,6 +38,11 @@
     --btn-destructive: 0 62.8% 30.6%;
     --btn-destructive-fg: 0 85.7% 97.3%;
     --btn-ghost-hover: 217.2 32.6% 17.5%;
+
+    /* Status indicators */
+    --status-success: 142.1 76.2% 36.3%;
+    --status-warning: 45.4 93.4% 47.5%;
+    --status-danger: 0 84.2% 60.2%;
   }
 
   .dark {
@@ -66,6 +71,58 @@
     --border: 220 13% 25%;
     --input: 220 13% 25%;
     --ring: 220 13% 82%;
+  }
+
+  /* Status indicator styles */
+  .status-badge {
+    @apply px-2 py-1 rounded-full text-xs font-medium;
+  }
+
+  .status-success {
+    @apply bg-emerald-500/20 text-emerald-500 dark:bg-emerald-500/30;
+  }
+
+  .status-warning {
+    @apply bg-yellow-500/20 text-yellow-500 dark:bg-yellow-500/30;
+  }
+
+  .status-danger {
+    @apply bg-red-500/20 text-red-500 dark:bg-red-500/30;
+  }
+
+  /* Risk level indicators */
+  .risk-low {
+    @apply status-success;
+  }
+
+  .risk-medium {
+    @apply status-warning;
+  }
+
+  .risk-high {
+    @apply status-danger;
+  }
+
+  /* Compliance status */
+  .compliance-compliant {
+    @apply status-success;
+  }
+
+  .compliance-action-needed {
+    @apply status-danger;
+  }
+
+  /* Deadline status */
+  .deadline-upcoming {
+    @apply status-warning;
+  }
+
+  .deadline-past-due {
+    @apply status-danger;
+  }
+
+  .deadline-completed {
+    @apply status-success;
   }
 
   /* Button styles */
