@@ -9,6 +9,11 @@ import { WebSocketServer } from 'ws';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -44,11 +49,15 @@ export function registerRoutes(app: Express): Server {
     if (!req.file) return res.status(400).send("No file uploaded");
 
     try {
+      // Create uploads directory if it doesn't exist
+      const uploadsDir = path.join(__dirname, '..', 'uploads');
+      await fs.mkdir(uploadsDir, { recursive: true });
+
       // Store file metadata and path in the database
       const [doc] = await db.insert(documents)
         .values({
           title: req.file.originalname,
-          content: req.file.path, // Store the file path
+          content: req.file.path,
           userId: req.user.id,
           metadata: {
             size: req.file.size,
@@ -90,6 +99,13 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).send("File not found");
       }
 
+      // Check if file exists
+      try {
+        await fs.access(filePath);
+      } catch (error) {
+        return res.status(404).send("File not found");
+      }
+
       // Set appropriate headers for the file download
       res.setHeader('Content-Type', doc.metadata?.mimetype || 'application/octet-stream');
       res.setHeader('Content-Disposition', `attachment; filename="${doc.title}"`);
@@ -98,7 +114,7 @@ export function registerRoutes(app: Express): Server {
       res.sendFile(path.resolve(filePath));
     } catch (error) {
       console.error("Download error:", error);
-      res.status(500).send("Failed to download file");
+      res.status(500).json({ message: error.message });
     }
   });
 
