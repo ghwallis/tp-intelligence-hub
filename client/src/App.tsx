@@ -16,6 +16,10 @@ import Benchmarking from "@/pages/benchmarking";
 import AIInsights from "@/pages/ai-insights";
 import Compliance from "@/pages/compliance";
 import PillarTwo from "@/pages/compliance/pillar-two";
+import BEPSCompliance from "@/pages/compliance/beps";
+import EUATAD from "@/pages/compliance/eu-atad";
+import APAManagement from "@/pages/compliance/apa";
+import AuditManagement from "@/pages/compliance/audit";
 import VersionControl from "@/pages/version-control";
 import Integrations from "@/pages/integrations";
 import Workflow from "@/pages/workflow";
@@ -61,6 +65,10 @@ function Router() {
               <Route path="/ai-insights" component={AIInsights} />
               <Route path="/compliance" component={Compliance} />
               <Route path="/compliance/pillar-two" component={PillarTwo} />
+              <Route path="/compliance/beps" component={BEPSCompliance} />
+              <Route path="/compliance/eu-atad" component={EUATAD} />
+              <Route path="/compliance/apa" component={APAManagement} />
+              <Route path="/compliance/audit" component={AuditManagement} />
               <Route path="/version-control" component={VersionControl} />
               <Route path="/integrations" component={Integrations} />
               <Route path="/workflow" component={Workflow} />
