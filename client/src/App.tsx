@@ -42,31 +42,35 @@ function Router() {
   }
 
   return (
-    <div className="flex h-screen">
-      <SidebarNav />
-      <main className="flex-1 overflow-y-auto">
-        <div className="container py-6">
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/documents/upload" component={Documents} />
-            <Route path="/documents/processing" component={DocumentProcessing} />
-            <Route path="/controversy" component={Controversy} />
-            <Route path="/docs" component={Documentation} />
-            <Route path="/analytics" component={Analytics} />
-            <Route path="/benchmarking" component={Benchmarking} />
-            <Route path="/ai-insights" component={AIInsights} />
-            <Route path="/compliance" component={Compliance} />
-            <Route path="/version-control" component={VersionControl} />
-            <Route path="/integrations" component={Integrations} />
-            <Route path="/workflow" component={Workflow} />
-            <Route path="/deadlines" component={Deadlines} />
-            <Route path="/collaboration" component={Collaboration} />
-            <Route path="/team" component={Team} />
-            <Route path="/settings" component={Settings} />
-            <Route component={NotFound} />
-          </Switch>
-        </div>
-      </main>
+    <div className="flex min-h-screen">
+      <aside className="fixed left-0 top-0 h-screen w-[240px] border-r border-border">
+        <SidebarNav />
+      </aside>
+      <div className="pl-[240px] flex-1">
+        <main className="h-screen overflow-y-auto">
+          <div className="container py-6">
+            <Switch>
+              <Route path="/" component={Dashboard} />
+              <Route path="/documents/upload" component={Documents} />
+              <Route path="/documents/processing" component={DocumentProcessing} />
+              <Route path="/controversy" component={Controversy} />
+              <Route path="/docs" component={Documentation} />
+              <Route path="/analytics" component={Analytics} />
+              <Route path="/benchmarking" component={Benchmarking} />
+              <Route path="/ai-insights" component={AIInsights} />
+              <Route path="/compliance" component={Compliance} />
+              <Route path="/version-control" component={VersionControl} />
+              <Route path="/integrations" component={Integrations} />
+              <Route path="/workflow" component={Workflow} />
+              <Route path="/deadlines" component={Deadlines} />
+              <Route path="/collaboration" component={Collaboration} />
+              <Route path="/team" component={Team} />
+              <Route path="/settings" component={Settings} />
+              <Route component={NotFound} />
+            </Switch>
+          </div>
+        </main>
+      </div>
       <ChatBot />
     </div>
   );

@@ -19,24 +19,28 @@ interface StatusBadgeProps {
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
+  // Map statuses to semantic states
   const statusClasses = {
-    // Risk levels
+    // Success states - Green
     low: "status-success",
-    medium: "status-warning",
-    high: "status-danger",
-    // Compliance statuses
     compliant: "status-success",
-    "action-needed": "status-danger",
-    // Deadline statuses
-    upcoming: "status-warning",
-    "past-due": "status-danger",
     completed: "status-success",
-    // Document/workflow statuses
-    draft: "status-muted",
+    approved: "status-success",
+
+    // Warning states - Yellow
+    medium: "status-warning",
+    upcoming: "status-warning",
     "in-progress": "status-warning",
     pending: "status-warning",
-    approved: "status-success",
+
+    // Danger states - Red
+    high: "status-danger",
+    "action-needed": "status-danger",
+    "past-due": "status-danger",
     rejected: "status-danger",
+
+    // Neutral state - Grey
+    draft: "status-muted",
   };
 
   const label = status.split("-").map(word => 

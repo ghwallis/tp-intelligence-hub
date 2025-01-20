@@ -9,6 +9,14 @@
 
   :root {
     --transition-duration: 150ms;
+    --status-success-bg: 142.1 76.2% 36.3% / 0.15;
+    --status-success-text: 142.1 76.2% 29.3%;
+    --status-warning-bg: 45.4 93.4% 47.5% / 0.15;
+    --status-warning-text: 45.4 93.4% 37.5%;
+    --status-danger-bg: 0 84.2% 60.2% / 0.15;
+    --status-danger-text: 0 84.2% 35.2%;
+    --status-muted-bg: 215 25% 27% / 0.15;
+    --status-muted-text: 215 25% 27%;
   }
 
   body {
@@ -26,73 +34,44 @@
     --accent-foreground: 210 40% 98%;
     --destructive-foreground: 0 85.7% 97.3%;
 
-    /* Button styles for dark modes */
-    --btn-primary: 210 40% 98%;
-    --btn-primary-fg: 222.2 47.4% 11.2%;
-    --btn-secondary: 217.2 32.6% 17.5%;
-    --btn-secondary-fg: 210 40% 98%;
-    --btn-muted: 217.2 32.6% 17.5%;
-    --btn-muted-fg: 210 40% 98%;
-    --btn-accent: 217.2 32.6% 17.5%;
-    --btn-accent-fg: 210 40% 98%;
-    --btn-destructive: 0 62.8% 30.6%;
-    --btn-destructive-fg: 0 85.7% 97.3%;
-    --btn-ghost-hover: 217.2 32.6% 17.5%;
-
-    /* Status indicators */
-    --status-success: 142.1 76.2% 36.3%;
-    --status-warning: 45.4 93.4% 47.5%;
-    --status-danger: 0 84.2% 60.2%;
-    --status-muted: 215 25% 27%;
+    /* Status colors for dark mode */
+    --status-success-bg: 142.1 76.2% 36.3% / 0.2;
+    --status-success-text: 142.1 76.2% 66.3%;
+    --status-warning-bg: 45.4 93.4% 47.5% / 0.2;
+    --status-warning-text: 45.4 93.4% 77.5%;
+    --status-danger-bg: 0 84.2% 60.2% / 0.2;
+    --status-danger-text: 0 84.2% 80.2%;
+    --status-muted-bg: 215 25% 27% / 0.2;
+    --status-muted-text: 215 25% 87%;
   }
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --card: 222.2 84% 4.9%;
-    --popover: 222.2 84% 4.9%;
-    --primary: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --muted: 217.2 32.6% 17.5%;
-    --accent: 217.2 32.6% 17.5%;
-    --destructive: 0 62.8% 30.6%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9;
-  }
-
-  .dark-grey {
-    --background: 220 13% 18%;
-    --card: 220 13% 23%;
-    --popover: 220 13% 18%;
-    --primary: 220 13% 90%;
-    --secondary: 220 13% 25%;
-    --muted: 220 13% 25%;
-    --accent: 220 13% 25%;
-    --destructive: 0 62.8% 30.6%;
-    --border: 220 13% 25%;
-    --input: 220 13% 25%;
-    --ring: 220 13% 82%;
-  }
-
-  /* Status indicator styles */
+  /* Status indicator common styles */
   .status-badge {
-    @apply px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 w-fit;
+    @apply px-2.5 py-0.5 text-xs font-medium rounded-full inline-flex items-center justify-center;
   }
 
+  /* Success states */
   .status-success {
-    @apply bg-emerald-500/20 text-emerald-500 dark:bg-emerald-500/30 dark:text-emerald-400;
+    background-color: hsl(var(--status-success-bg));
+    color: hsl(var(--status-success-text));
   }
 
+  /* Warning states */
   .status-warning {
-    @apply bg-yellow-500/20 text-yellow-600 dark:bg-yellow-500/30 dark:text-yellow-400;
+    background-color: hsl(var(--status-warning-bg));
+    color: hsl(var(--status-warning-text));
   }
 
+  /* Danger states */
   .status-danger {
-    @apply bg-red-500/20 text-red-600 dark:bg-red-500/30 dark:text-red-400;
+    background-color: hsl(var(--status-danger-bg));
+    color: hsl(var(--status-danger-text));
   }
 
+  /* Neutral/muted states */
   .status-muted {
-    @apply bg-slate-500/20 text-slate-600 dark:bg-slate-500/30 dark:text-slate-400;
+    background-color: hsl(var(--status-muted-bg));
+    color: hsl(var(--status-muted-text));
   }
 
   /* Button styles */
@@ -112,8 +91,7 @@
   *, *::before, *::after {
     transition: background-color var(--transition-duration) ease-in-out,
                 border-color var(--transition-duration) ease-in-out,
-                color var(--transition-duration) ease-in-out,
-                box-shadow var(--transition-duration) ease-in-out;
+                color var(--transition-duration) ease-in-out;
   }
 
   /* Disable transitions on page load */
