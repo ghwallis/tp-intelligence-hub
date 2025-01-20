@@ -9,14 +9,6 @@
 
   :root {
     --transition-duration: 150ms;
-    --status-success-bg: 142.1 76.2% 36.3% / 0.15;
-    --status-success-text: 142.1 76.2% 29.3%;
-    --status-warning-bg: 45.4 93.4% 47.5% / 0.15;
-    --status-warning-text: 45.4 93.4% 37.5%;
-    --status-danger-bg: 0 84.2% 60.2% / 0.15;
-    --status-danger-text: 0 84.2% 35.2%;
-    --status-muted-bg: 215 25% 27% / 0.15;
-    --status-muted-text: 215 25% 27%;
   }
 
   body {
@@ -35,67 +27,74 @@
     --destructive-foreground: 0 85.7% 97.3%;
 
     /* Status colors for dark mode */
-    --status-success-bg: 142.1 76.2% 36.3% / 0.2;
-    --status-success-text: 142.1 76.2% 66.3%;
-    --status-warning-bg: 45.4 93.4% 47.5% / 0.2;
-    --status-warning-text: 45.4 93.4% 77.5%;
-    --status-danger-bg: 0 84.2% 60.2% / 0.2;
-    --status-danger-text: 0 84.2% 80.2%;
+    --status-success-bg: 142.1 70% 45% / 0.2;
+    --status-success-text: 142.1 70% 85%;
+    --status-warning-bg: 38 92% 50% / 0.2;
+    --status-warning-text: 38 92% 85%;
+    --status-danger-bg: 0 84% 60% / 0.2;
+    --status-danger-text: 0 84% 85%;
     --status-muted-bg: 215 25% 27% / 0.2;
     --status-muted-text: 215 25% 87%;
-  }
 
-  /* Status indicator common styles */
-  .status-badge {
-    @apply px-2.5 py-0.5 text-xs font-medium rounded-full inline-flex items-center justify-center;
+    /* Button styles for dark mode */
+    --btn-primary-bg: 210 40% 98%;
+    --btn-primary-text: 222.2 47.4% 11.2%;
+    --btn-secondary-bg: 217.2 32.6% 25%;
+    --btn-secondary-text: 210 40% 98%;
   }
+}
 
-  /* Success states */
-  .status-success {
-    background-color: hsl(var(--status-success-bg));
-    color: hsl(var(--status-success-text));
-  }
+/* Button component styles */
+.btn {
+  @apply inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors 
+         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50;
+}
 
-  /* Warning states */
-  .status-warning {
-    background-color: hsl(var(--status-warning-bg));
-    color: hsl(var(--status-warning-text));
-  }
+.btn-primary {
+  background-color: hsl(var(--btn-primary-bg));
+  color: hsl(var(--btn-primary-text));
+  @apply hover:opacity-90;
+}
 
-  /* Danger states */
-  .status-danger {
-    background-color: hsl(var(--status-danger-bg));
-    color: hsl(var(--status-danger-text));
-  }
+.btn-secondary {
+  background-color: hsl(var(--btn-secondary-bg));
+  color: hsl(var(--btn-secondary-text));
+  @apply hover:opacity-90;
+}
 
-  /* Neutral/muted states */
-  .status-muted {
-    background-color: hsl(var(--status-muted-bg));
-    color: hsl(var(--status-muted-text));
-  }
+/* Status indicators */
+.status-badge {
+  @apply px-2.5 py-0.5 text-xs font-medium rounded-full inline-flex items-center justify-center;
+}
 
-  /* Button styles */
-  .btn-primary {
-    @apply bg-btn-primary text-btn-primary-fg hover:bg-btn-primary/90;
-  }
+.status-success {
+  background-color: hsl(var(--status-success-bg));
+  color: hsl(var(--status-success-text));
+}
 
-  .btn-secondary {
-    @apply bg-btn-secondary text-btn-secondary-fg hover:bg-btn-secondary/80;
-  }
+.status-warning {
+  background-color: hsl(var(--status-warning-bg));
+  color: hsl(var(--status-warning-text));
+}
 
-  .btn-ghost {
-    @apply hover:bg-btn-ghost-hover hover:text-foreground;
-  }
+.status-danger {
+  background-color: hsl(var(--status-danger-bg));
+  color: hsl(var(--status-danger-text));
+}
 
-  /* Smooth theme transitions */
-  *, *::before, *::after {
-    transition: background-color var(--transition-duration) ease-in-out,
-                border-color var(--transition-duration) ease-in-out,
-                color var(--transition-duration) ease-in-out;
-  }
+.status-muted {
+  background-color: hsl(var(--status-muted-bg));
+  color: hsl(var(--status-muted-text));
+}
 
-  /* Disable transitions on page load */
-  .preload * {
-    transition: none !important;
-  }
+/* Smooth theme transitions */
+*, *::before, *::after {
+  transition: background-color var(--transition-duration) ease-in-out,
+              border-color var(--transition-duration) ease-in-out,
+              color var(--transition-duration) ease-in-out;
+}
+
+/* Disable transitions on page load */
+.preload * {
+  transition: none !important;
 }

@@ -15,6 +15,7 @@ import Analytics from "@/pages/analytics";
 import Benchmarking from "@/pages/benchmarking";
 import AIInsights from "@/pages/ai-insights";
 import Compliance from "@/pages/compliance";
+import PillarTwo from "@/pages/compliance/pillar-two";
 import VersionControl from "@/pages/version-control";
 import Integrations from "@/pages/integrations";
 import Workflow from "@/pages/workflow";
@@ -59,6 +60,7 @@ function Router() {
               <Route path="/benchmarking" component={Benchmarking} />
               <Route path="/ai-insights" component={AIInsights} />
               <Route path="/compliance" component={Compliance} />
+              <Route path="/compliance/pillar-two" component={PillarTwo} />
               <Route path="/version-control" component={VersionControl} />
               <Route path="/integrations" component={Integrations} />
               <Route path="/workflow" component={Workflow} />
