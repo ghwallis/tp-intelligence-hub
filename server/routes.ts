@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { users, documents, templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts, systemIntegrations, integrationLogs, collaborationSessions, collaborators, collaborationEvents } from "@db/schema";
+import { users, documents, templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts, systemIntegrations, integrationLogs, collaborationSessions, collaborators, collaborationEvents, complianceFeedback } from "@db/schema";
 import { eq, desc } from "drizzle-orm";
 import OpenAI from "openai";
 import { WebSocketServer } from 'ws';
@@ -375,6 +375,36 @@ Provide concise, practical advice based on this context.`;
 
     res.json(activeCollaborators);
   });
+
+  // Add compliance feedback endpoint
+  app.post("/api/compliance/feedback", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    const { complianceCheckId, rating, type, comment } = req.body;
+
+    try {
+      const [feedback] = await db.insert(complianceFeedback)
+        .values({
+          userId: req.user.id,
+          complianceCheckId,
+          rating,
+          type,
+          comment,
+          status: 'pending',
+          metadata: {
+            userAgent: req.headers['user-agent'],
+            timestamp: new Date().toISOString()
+          }
+        })
+        .returning();
+
+      res.json(feedback);
+    } catch (error: any) {
+      console.error("Failed to submit feedback:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
 
   // Create HTTP server
   const httpServer = createServer(app);

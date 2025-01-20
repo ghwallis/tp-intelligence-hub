@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Progress } from "@/components/ui/progress";
 import { SearchFilter, type SearchFilters } from "@/components/search-filter";
+import { FeedbackDialog } from "@/components/ui/feedback-dialog";
 
 type Audit = {
   jurisdiction: string;
@@ -78,7 +79,6 @@ export default function AuditManagement() {
   const [filteredResolutions, setFilteredResolutions] = useState(mockResolutions);
 
   const handleFilterChange = (filters: SearchFilters) => {
-    // Filter audits based on search criteria
     const filteredAuditResults = mockAudits.filter((audit) => {
       const matchesKeyword = filters.keyword
         ? Object.values(audit).some((value) =>
@@ -86,18 +86,17 @@ export default function AuditManagement() {
           )
         : true;
 
-      const matchesStatus = filters.status === "all" 
-        ? true 
+      const matchesStatus = filters.status === "all"
+        ? true
         : audit.status === filters.status;
 
-      const matchesDate = !filters.dateFrom || !filters.dateTo 
-        ? true 
-        : true; // Add date filtering logic when we have actual dates
+      const matchesDate = !filters.dateFrom || !filters.dateTo
+        ? true
+        : true;
 
       return matchesKeyword && matchesStatus && matchesDate;
     });
 
-    // Apply similar filtering to disputes and resolutions
     const filteredDisputeResults = mockDisputes.filter((dispute) =>
       Object.values(dispute).some((value) =>
         value.toLowerCase().includes(filters.keyword.toLowerCase())
@@ -124,6 +123,7 @@ export default function AuditManagement() {
             Track audits and manage dispute resolution processes
           </p>
         </div>
+        <FeedbackDialog complianceCheckId={1} />
       </div>
 
       <SearchFilter onFilterChange={handleFilterChange} />

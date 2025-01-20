@@ -126,6 +126,19 @@ export const collaborationEvents = pgTable("collaboration_events", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const complianceFeedback = pgTable("compliance_feedback", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  complianceCheckId: integer("compliance_check_id").references(() => complianceChecks.id),
+  rating: integer("rating").notNull(),
+  comment: text("comment"),
+  type: text("type").notNull(), // 'suggestion', 'issue', 'general'
+  status: text("status").default('pending'),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export type User = typeof users.$inferSelect;
@@ -149,3 +162,6 @@ export type Collaborator = typeof collaborators.$inferSelect;
 export type NewCollaborator = typeof collaborators.$inferInsert;
 export type CollaborationEvent = typeof collaborationEvents.$inferSelect;
 export type NewCollaborationEvent = typeof collaborationEvents.$inferInsert;
+
+export type ComplianceFeedback = typeof complianceFeedback.$inferSelect;
+export type NewComplianceFeedback = typeof complianceFeedback.$inferInsert;
