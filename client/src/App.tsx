@@ -42,9 +42,9 @@ function Router() {
   }
 
   return (
-    <div className="grid grid-cols-[240px_1fr] h-screen">
+    <div className="flex h-screen">
       <SidebarNav />
-      <main className="overflow-y-auto">
+      <main className="flex-1 overflow-y-auto">
         <div className="container py-6">
           <Switch>
             <Route path="/" component={Dashboard} />
@@ -74,12 +74,12 @@ function Router() {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="system">
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="system">
         <Router />
         <Toaster />
-      </QueryClientProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

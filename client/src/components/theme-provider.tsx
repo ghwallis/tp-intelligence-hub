@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
+import { useUser } from "@/hooks/use-user";
 
 type Theme = "dark" | "light" | "system" | "dark-grey";
 
@@ -18,7 +19,18 @@ export function ThemeProvider({
   children,
   defaultTheme = "system",
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(defaultTheme);
+  const { user } = useUser();
+  const [theme, setTheme] = useState<Theme>(() => {
+    // First try to get theme from localStorage
+    const savedTheme = localStorage.getItem("theme") as Theme;
+    if (savedTheme) return savedTheme;
+
+    // Then try to get user's preferred theme if they're logged in
+    if (user?.preferredTheme) return user.preferredTheme as Theme;
+
+    // Finally fallback to default
+    return defaultTheme;
+  });
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -34,6 +46,10 @@ export function ThemeProvider({
     }
 
     root.classList.add(theme);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("theme", theme);
   }, [theme]);
 
   return (

@@ -9,23 +9,34 @@ interface StatusBadgeProps {
     | "action-needed"
     | "upcoming"
     | "past-due"
-    | "completed";
+    | "completed"
+    | "draft"
+    | "in-progress"
+    | "pending"
+    | "approved"
+    | "rejected";
   className?: string;
 }
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   const statusClasses = {
     // Risk levels
-    low: "risk-low",
-    medium: "risk-medium",
-    high: "risk-high",
+    low: "status-success",
+    medium: "status-warning",
+    high: "status-danger",
     // Compliance statuses
-    compliant: "compliance-compliant",
-    "action-needed": "compliance-action-needed",
+    compliant: "status-success",
+    "action-needed": "status-danger",
     // Deadline statuses
-    upcoming: "deadline-upcoming",
-    "past-due": "deadline-past-due",
-    completed: "deadline-completed",
+    upcoming: "status-warning",
+    "past-due": "status-danger",
+    completed: "status-success",
+    // Document/workflow statuses
+    draft: "status-muted",
+    "in-progress": "status-warning",
+    pending: "status-warning",
+    approved: "status-success",
+    rejected: "status-danger",
   };
 
   const label = status.split("-").map(word => 

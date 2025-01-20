@@ -4,9 +4,48 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useTheme } from "@/components/theme-provider";
 import { Moon, Sun, Monitor, Cloud } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useUser } from "@/hooks/use-user";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
 
 export default function Settings() {
   const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
+
+  const updateThemeMutation = useMutation({
+    mutationFn: async (newTheme: string) => {
+      const response = await fetch('/api/user/theme', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: newTheme }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Theme updated",
+        description: "Your preferred theme has been saved",
+      });
+    },
+    onError: (error) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || "Failed to update theme",
+      });
+    },
+  });
+
+  const handleThemeChange = (value: string) => {
+    setTheme(value as "light" | "dark" | "dark-grey" | "system");
+    updateThemeMutation.mutate(value);
+  };
 
   return (
     <div className="space-y-6">
@@ -26,7 +65,7 @@ export default function Settings() {
             </div>
             <RadioGroup
               defaultValue={theme}
-              onValueChange={(value) => setTheme(value as "light" | "dark" | "dark-grey" | "system")}
+              onValueChange={handleThemeChange}
               className="grid grid-cols-4 gap-4"
             >
               <Label

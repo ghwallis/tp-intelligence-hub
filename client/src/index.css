@@ -43,6 +43,7 @@
     --status-success: 142.1 76.2% 36.3%;
     --status-warning: 45.4 93.4% 47.5%;
     --status-danger: 0 84.2% 60.2%;
+    --status-muted: 215 25% 27%;
   }
 
   .dark {
@@ -75,54 +76,23 @@
 
   /* Status indicator styles */
   .status-badge {
-    @apply px-2 py-1 rounded-full text-xs font-medium;
+    @apply px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 w-fit;
   }
 
   .status-success {
-    @apply bg-emerald-500/20 text-emerald-500 dark:bg-emerald-500/30;
+    @apply bg-emerald-500/20 text-emerald-500 dark:bg-emerald-500/30 dark:text-emerald-400;
   }
 
   .status-warning {
-    @apply bg-yellow-500/20 text-yellow-500 dark:bg-yellow-500/30;
+    @apply bg-yellow-500/20 text-yellow-600 dark:bg-yellow-500/30 dark:text-yellow-400;
   }
 
   .status-danger {
-    @apply bg-red-500/20 text-red-500 dark:bg-red-500/30;
+    @apply bg-red-500/20 text-red-600 dark:bg-red-500/30 dark:text-red-400;
   }
 
-  /* Risk level indicators */
-  .risk-low {
-    @apply status-success;
-  }
-
-  .risk-medium {
-    @apply status-warning;
-  }
-
-  .risk-high {
-    @apply status-danger;
-  }
-
-  /* Compliance status */
-  .compliance-compliant {
-    @apply status-success;
-  }
-
-  .compliance-action-needed {
-    @apply status-danger;
-  }
-
-  /* Deadline status */
-  .deadline-upcoming {
-    @apply status-warning;
-  }
-
-  .deadline-past-due {
-    @apply status-danger;
-  }
-
-  .deadline-completed {
-    @apply status-success;
+  .status-muted {
+    @apply bg-slate-500/20 text-slate-600 dark:bg-slate-500/30 dark:text-slate-400;
   }
 
   /* Button styles */

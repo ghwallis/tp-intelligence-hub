@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { documents, templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts, systemIntegrations, integrationLogs, collaborationSessions, collaborators, collaborationEvents } from "@db/schema";
+import { users, documents, templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts, systemIntegrations, integrationLogs, collaborationSessions, collaborators, collaborationEvents } from "@db/schema";
 import { eq, desc } from "drizzle-orm";
 import OpenAI from "openai";
 import { WebSocketServer } from 'ws';
@@ -36,6 +36,29 @@ fs.mkdir('uploads', { recursive: true }).catch(console.error);
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
+  // Add the theme update endpoint
+  app.post("/api/user/theme", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    const { theme } = req.body;
+    const validThemes = ["light", "dark", "dark-grey", "system"];
+
+    if (!validThemes.includes(theme)) {
+      return res.status(400).send("Invalid theme");
+    }
+
+    try {
+      await db.update(users)
+        .set({ preferredTheme: theme })
+        .where(eq(users.id, req.user.id));
+
+      res.json({ message: "Theme updated successfully" });
+    } catch (error: any) {
+      console.error("Failed to update theme:", error);
+      res.status(500).send("Failed to update theme");
+    }
+  });
+
   // Documents API
   app.get("/api/documents", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
@@ -49,16 +72,12 @@ export function registerRoutes(app: Express): Server {
     if (!req.file) return res.status(400).send("No file uploaded");
 
     try {
-      // Create uploads directory if it doesn't exist
-      const uploadsDir = path.join(__dirname, '..', 'uploads');
-      await fs.mkdir(uploadsDir, { recursive: true });
-
-      // Store file metadata and path in the database
       const [doc] = await db.insert(documents)
         .values({
           title: req.file.originalname,
           content: req.file.path,
           userId: req.user.id,
+          status: 'draft',
           metadata: {
             size: req.file.size,
             mimetype: req.file.mimetype,
@@ -68,9 +87,9 @@ export function registerRoutes(app: Express): Server {
         .returning();
 
       res.json(doc);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Upload error:", error);
-      res.status(500).send("Failed to process upload");
+      res.status(500).send(error.message || "Failed to process upload");
     }
   });
 
@@ -89,7 +108,6 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).send("Document not found");
       }
 
-      // Verify user has access to this document
       if (doc.userId !== req.user.id) {
         return res.status(403).send("Access denied");
       }
@@ -99,20 +117,12 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).send("File not found");
       }
 
-      // Check if file exists
-      try {
-        await fs.access(filePath);
-      } catch (error) {
-        return res.status(404).send("File not found");
-      }
-
-      // Set appropriate headers for the file download
-      res.setHeader('Content-Type', doc.metadata?.mimetype || 'application/octet-stream');
+      const metadata = doc.metadata as Record<string, any>;
+      res.setHeader('Content-Type', metadata?.mimetype || 'application/octet-stream');
       res.setHeader('Content-Disposition', `attachment; filename="${doc.title}"`);
 
-      // Stream the file to the response
       res.sendFile(path.resolve(filePath));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Download error:", error);
       res.status(500).json({ message: error.message });
     }
@@ -369,7 +379,7 @@ Provide concise, practical advice based on this context.`;
   // Create HTTP server
   const httpServer = createServer(app);
 
-  // Setup WebSocket server
+  // Collaboration WebSocket setup
   const wss = new WebSocketServer({ server: httpServer, path: '/ws/collaboration' });
 
   wss.on('connection', async (ws, req) => {
@@ -449,9 +459,9 @@ Provide concise, practical advice based on this context.`;
   return httpServer;
 }
 
-//Type definition for CollaborationMessage
+// Type definition for CollaborationMessage
 interface CollaborationMessage {
-    type: 'join' | 'leave' | 'cursor' | 'edit' | 'comment';
-    userId: number;
-    content?: any;
+  type: 'join' | 'leave' | 'cursor' | 'edit' | 'comment';
+  userId: number;
+  content?: any;
 }

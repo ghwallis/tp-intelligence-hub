@@ -5,6 +5,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
   password: text("password").notNull(),
+  preferredTheme: text("preferred_theme").default('system'),
 });
 
 export const documents = pgTable("documents", {
@@ -13,6 +14,7 @@ export const documents = pgTable("documents", {
   content: text("content").notNull(),
   userId: integer("user_id").references(() => users.id),
   templateId: integer("template_id").references(() => templates.id),
+  status: text("status").default('draft'),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   metadata: jsonb("metadata")
