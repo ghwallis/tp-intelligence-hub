@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import * as pdfjsLib from "pdfjs-dist";
 import { Card } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { CollaborationPanel } from "@/components/collaboration-panel";
 
 interface DocumentViewerProps {
@@ -17,6 +18,11 @@ export function DocumentViewer({ documentId, content, title, type }: DocumentVie
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [pdfDocument, setPdfDocument] = useState<any>(null);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const getOfficeOnlineUrl = () => {
+    const downloadUrl = `${window.location.origin}/api/documents/${documentId}/download`;
+    return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(downloadUrl)}`;
+  };
 
   useEffect(() => {
     if (type === "pdf" && content) {
@@ -63,25 +69,37 @@ export function DocumentViewer({ documentId, content, title, type }: DocumentVie
     );
   }
 
+  if (type === "excel") {
+    const officeUrl = getOfficeOnlineUrl();
+    return (
+      <div className="relative h-full">
+        <Card className="p-4 h-full">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-bold">{title}</h2>
+            <Button 
+              variant="outline" 
+              onClick={() => window.open(officeUrl, '_blank')}
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Open in New Tab
+            </Button>
+          </div>
+          <iframe
+            src={officeUrl}
+            className="w-full h-[calc(100vh-200px)]"
+            frameBorder="0"
+          />
+        </Card>
+        <CollaborationPanel documentId={documentId} />
+      </div>
+    );
+  }
+
   return (
     <div className="relative">
       <Card className="p-4">
         <h2 className="text-xl font-bold mb-4">{title}</h2>
-        {type === "excel" ? (
-          <div className="p-4 text-center">
-            <p className="text-muted-foreground mb-4">
-              Excel files can be viewed and edited in Microsoft Office Online for the best collaboration experience.
-            </p>
-            <a 
-              href={`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(window.location.origin + '/api/documents/' + documentId + '/download')}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline"
-            >
-              Open in Office Online
-            </a>
-          </div>
-        ) : type === "text" ? (
+        {type === "text" ? (
           <Editor
             height="70vh"
             defaultLanguage="plaintext"
