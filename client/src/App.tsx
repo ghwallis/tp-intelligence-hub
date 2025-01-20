@@ -13,6 +13,8 @@ import Controversy from "@/pages/controversy";
 import Documentation from "@/pages/documentation";
 import Analytics from "@/pages/analytics";
 import Benchmarking from "@/pages/benchmarking";
+import BenchmarkingAnalytics from "@/pages/benchmarking/analytics";
+import DataSources from "@/pages/benchmarking/data-sources";
 import AIInsights from "@/pages/ai-insights";
 import Compliance from "@/pages/compliance";
 import PillarTwo from "@/pages/compliance/pillar-two";
@@ -62,6 +64,8 @@ function Router() {
               <Route path="/docs" component={Documentation} />
               <Route path="/analytics" component={Analytics} />
               <Route path="/benchmarking" component={Benchmarking} />
+              <Route path="/benchmarking/analytics" component={BenchmarkingAnalytics} />
+              <Route path="/benchmarking/data-sources" component={DataSources} />
               <Route path="/ai-insights" component={AIInsights} />
               <Route path="/compliance" component={Compliance} />
               <Route path="/compliance/pillar-two" component={PillarTwo} />

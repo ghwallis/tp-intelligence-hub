@@ -18,11 +18,19 @@ import {
   Settings as SettingsIcon,
   MessageSquare,
   LogOut,
+  ChevronDown,
+  Database,
+  LineChart,
+  Binary,
+  BookOpen,
+  HandshakeIcon,
+  AlertOctagon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/hooks/use-user";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { useState } from "react";
 
 const mainNavItems = [
   {
@@ -60,8 +68,19 @@ const insightsNavItems = [
   },
   {
     title: "Benchmarking",
-    href: "/benchmarking",
     icon: Scale,
+    items: [
+      {
+        title: "Analytics",
+        href: "/benchmarking/analytics",
+        icon: LineChart,
+      },
+      {
+        title: "Data Sources",
+        href: "/benchmarking/data-sources",
+        icon: Database,
+      },
+    ],
   },
   {
     title: "AI Insights",
@@ -70,8 +89,34 @@ const insightsNavItems = [
   },
   {
     title: "Compliance",
-    href: "/compliance",
     icon: ShieldCheck,
+    items: [
+      {
+        title: "OECD Pillar Two",
+        href: "/compliance/pillar-two",
+        icon: Binary,
+      },
+      {
+        title: "BEPS Action Plans",
+        href: "/compliance/beps",
+        icon: BookOpen,
+      },
+      {
+        title: "EU ATAD",
+        href: "/compliance/eu-atad",
+        icon: AlertOctagon,
+      },
+      {
+        title: "APA Management",
+        href: "/compliance/apa",
+        icon: HandshakeIcon,
+      },
+      {
+        title: "Audit Management",
+        href: "/compliance/audit",
+        icon: AlertTriangle,
+      },
+    ],
   },
   {
     title: "Version Control",
@@ -119,10 +164,54 @@ const settingsNavItems = [
 export function SidebarNav() {
   const [location] = useLocation();
   const { user, logout } = useUser();
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
-  const NavItem = ({ item }: { item: typeof mainNavItems[0] }) => {
+  const toggleExpanded = (title: string) => {
+    setExpandedItems((current) =>
+      current.includes(title)
+        ? current.filter((item) => item !== title)
+        : [...current, title]
+    );
+  };
+
+  const NavItem = ({ item, nested = false }: { item: any; nested?: boolean }) => {
     const Icon = item.icon;
+    const hasItems = item.items && item.items.length > 0;
     const isActive = location === item.href;
+    const isExpanded = expandedItems.includes(item.title);
+
+    if (hasItems) {
+      return (
+        <div>
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full justify-start gap-3 rounded-lg px-3 py-2 text-sm transition-colors font-medium",
+              isExpanded
+                ? "bg-primary/10 text-primary"
+                : "text-foreground/70 hover:bg-primary/5 hover:text-foreground"
+            )}
+            onClick={() => toggleExpanded(item.title)}
+          >
+            <Icon className="h-4 w-4" />
+            {item.title}
+            <ChevronDown
+              className={cn(
+                "ml-auto h-4 w-4 transition-transform",
+                isExpanded && "rotate-180"
+              )}
+            />
+          </Button>
+          {isExpanded && (
+            <div className="ml-4 mt-1 space-y-1">
+              {item.items.map((subItem: any) => (
+                <NavItem key={subItem.title} item={subItem} nested />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return (
       <Link href={item.href}>
@@ -130,6 +219,7 @@ export function SidebarNav() {
           variant="ghost"
           className={cn(
             "w-full justify-start gap-3 rounded-lg px-3 py-2 text-sm transition-colors font-medium",
+            nested && "text-sm",
             isActive
               ? "bg-primary/10 text-primary hover:bg-primary/20"
               : "text-foreground/70 hover:bg-primary/5 hover:text-foreground"
@@ -142,7 +232,7 @@ export function SidebarNav() {
     );
   };
 
-  const NavSection = ({ title, items }: { title: string; items: typeof mainNavItems }) => (
+  const NavSection = ({ title, items }: { title: string; items: any[] }) => (
     <div className="space-y-2">
       <h2 className="px-4 text-xs font-semibold text-foreground/50 uppercase tracking-wider">
         {title}
@@ -178,7 +268,7 @@ export function SidebarNav() {
         <Button
           variant="ghost"
           className="w-full justify-start gap-2 text-sm font-medium text-foreground/70 hover:text-foreground hover:bg-primary/5"
-          onClick={logout}
+          onClick={() => logout()}
         >
           <LogOut className="h-4 w-4" />
           Logout
