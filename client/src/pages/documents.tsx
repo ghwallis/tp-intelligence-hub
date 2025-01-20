@@ -67,6 +67,13 @@ export default function Documents() {
 
   const selectedDocument = documents?.find(doc => doc.id === selectedDoc);
 
+  const getDocumentType = (filename: string): "text" | "pdf" | "excel" => {
+    const extension = filename.toLowerCase().split('.').pop();
+    if (extension === 'pdf') return 'pdf';
+    if (extension === 'xlsx' || extension === 'xls') return 'excel';
+    return 'text';
+  };
+
   return (
     <div className="p-8 space-y-8">
       <div className="flex justify-between items-center">
@@ -237,7 +244,7 @@ export default function Documents() {
               documentId={selectedDocument.id}
               title={selectedDocument.title}
               content={selectedDocument.content}
-              type={selectedDocument.title.toLowerCase().endsWith('.pdf') ? 'pdf' : 'text'}
+              type={getDocumentType(selectedDocument.title)}
             />
           )}
         </DialogContent>

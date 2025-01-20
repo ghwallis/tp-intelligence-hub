@@ -9,7 +9,7 @@ interface DocumentViewerProps {
   documentId: number;
   content: string;
   title: string;
-  type: "text" | "pdf";
+  type: "text" | "pdf" | "excel";
 }
 
 export function DocumentViewer({ documentId, content, title, type }: DocumentViewerProps) {
@@ -22,13 +22,15 @@ export function DocumentViewer({ documentId, content, title, type }: DocumentVie
     if (type === "pdf" && content) {
       // Initialize PDF.js
       pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-      
+
       // Load the PDF
       const loadingTask = pdfjsLib.getDocument(content);
       loadingTask.promise.then((pdf) => {
         setPdfDocument(pdf);
         setIsLoading(false);
       });
+    } else {
+      setIsLoading(false);
     }
   }, [content, type]);
 
@@ -37,7 +39,7 @@ export function DocumentViewer({ documentId, content, title, type }: DocumentVie
       pdfDocument.getPage(currentPage).then((page: any) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        
+
         const viewport = page.getViewport({ scale: 1.5 });
         const context = canvas.getContext("2d");
         canvas.height = viewport.height;
@@ -47,7 +49,7 @@ export function DocumentViewer({ documentId, content, title, type }: DocumentVie
           canvasContext: context,
           viewport: viewport,
         };
-        
+
         page.render(renderContext);
       });
     }
@@ -65,7 +67,21 @@ export function DocumentViewer({ documentId, content, title, type }: DocumentVie
     <div className="relative">
       <Card className="p-4">
         <h2 className="text-xl font-bold mb-4">{title}</h2>
-        {type === "text" ? (
+        {type === "excel" ? (
+          <div className="p-4 text-center">
+            <p className="text-muted-foreground mb-4">
+              Excel files can be viewed and edited in Microsoft Office Online for the best collaboration experience.
+            </p>
+            <a 
+              href={`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(window.location.origin + '/api/documents/' + documentId + '/download')}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              Open in Office Online
+            </a>
+          </div>
+        ) : type === "text" ? (
           <Editor
             height="70vh"
             defaultLanguage="plaintext"
