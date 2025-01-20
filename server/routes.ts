@@ -433,7 +433,7 @@ Provide concise, practical advice based on this context.`;
   return httpServer;
 }
 
-//Type definition for CollaborationMessage.  This needs to be added as it is not included in original or edited code.
+//Type definition for CollaborationMessage
 interface CollaborationMessage {
     type: 'join' | 'leave' | 'cursor' | 'edit' | 'comment';
     userId: number;

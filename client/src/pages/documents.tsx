@@ -33,6 +33,7 @@ export default function Documents() {
 
     try {
       await uploadDocument(file);
+      setOpen(false);
       toast({
         title: "Success",
         description: "File uploaded successfully",
@@ -47,74 +48,76 @@ export default function Documents() {
     }
   };
 
-  const openDocument = (documentId: number, title: string) => {
-    // Construct the document URL
-    const baseUrl = window.location.origin;
-    const downloadUrl = `${baseUrl}/api/documents/${documentId}/download`;
-    const officeUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(downloadUrl)}`;
+  const openDocument = (documentId: number) => {
+    // Direct download URL
+    const downloadUrl = `/api/documents/${documentId}/download`;
 
-    // Open in new tab
-    window.open(officeUrl, '_blank', 'noopener,noreferrer');
+    // Try to download the file directly first
+    window.open(downloadUrl, '_blank');
   };
 
   return (
-    <div className="p-8">
-      <div className="max-w-5xl mx-auto">
-        <div className="mb-8 flex justify-between items-center">
-          <h2 className="text-3xl font-bold">All Documents</h2>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload New
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Upload Document</DialogTitle>
-              </DialogHeader>
-              <Input
-                type="file"
-                onChange={handleFileUpload}
-                accept=".xlsx,.xls,.doc,.docx,.pdf,.txt"
-              />
-            </DialogContent>
-          </Dialog>
-        </div>
+    <div className="container mx-auto p-4">
+      <div className="flex flex-col min-h-screen">
+        <div className="flex-1">
+          <div className="mb-4 flex justify-between items-center">
+            <h1 className="text-2xl font-semibold">My content</h1>
+            <Dialog open={open} onOpenChange={setOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Upload Document</DialogTitle>
+                </DialogHeader>
+                <Input
+                  type="file"
+                  onChange={handleFileUpload}
+                  accept=".xlsx,.xls,.doc,.docx,.pdf,.txt"
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
 
-        <div className="bg-white rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Modified</TableHead>
-                <TableHead>Owner</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {documents?.map((doc) => (
-                <TableRow 
-                  key={doc.id}
-                  className="cursor-pointer hover:bg-gray-50"
-                  onClick={() => openDocument(doc.id, doc.title)}
-                >
-                  <TableCell className="font-medium flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-500" />
-                    {doc.title}
-                  </TableCell>
-                  <TableCell>{format(new Date(doc.updatedAt), 'MMM d, yyyy')}</TableCell>
-                  <TableCell>You</TableCell>
-                </TableRow>
-              ))}
-              {!documents?.length && (
+          <div className="bg-white rounded-lg border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                    No documents yet. Upload your first document to get started.
-                  </TableCell>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Modified</TableHead>
+                  <TableHead>Owner</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {documents?.map((doc) => (
+                  <TableRow 
+                    key={doc.id}
+                    className="cursor-pointer hover:bg-gray-50"
+                    onClick={() => openDocument(doc.id)}
+                  >
+                    <TableCell className="font-medium flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-blue-500" />
+                      {doc.title}
+                    </TableCell>
+                    <TableCell>
+                      {doc.updatedAt ? format(new Date(doc.updatedAt), 'MMM d, yyyy') : 'N/A'}
+                    </TableCell>
+                    <TableCell>You</TableCell>
+                  </TableRow>
+                ))}
+                {!documents?.length && (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                      No documents yet. Upload your first document to get started.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
     </div>
