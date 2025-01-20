@@ -126,24 +126,25 @@ export function SidebarNav() {
 
     return (
       <Link href={item.href}>
-        <a
+        <Button
+          variant="ghost"
           className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors font-medium",
+            "w-full justify-start gap-3 rounded-lg px-3 py-2 text-sm transition-colors font-medium",
             isActive
-              ? "bg-sidebar-accent text-sidebar-accent-foreground"
-              : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+              ? "bg-primary/10 text-primary hover:bg-primary/20"
+              : "text-foreground/70 hover:bg-primary/5 hover:text-foreground"
           )}
         >
           <Icon className="h-4 w-4" />
           {item.title}
-        </a>
+        </Button>
       </Link>
     );
   };
 
   const NavSection = ({ title, items }: { title: string; items: typeof mainNavItems }) => (
     <div className="space-y-2">
-      <h2 className="px-4 text-xs font-semibold text-sidebar-foreground/40 uppercase tracking-wider">
+      <h2 className="px-4 text-xs font-semibold text-foreground/50 uppercase tracking-wider">
         {title}
       </h2>
       {items.map((item) => (
@@ -153,30 +154,30 @@ export function SidebarNav() {
   );
 
   return (
-    <div className="flex h-screen min-w-[240px] flex-col bg-sidebar border-r border-sidebar-border">
+    <div className="flex h-screen min-w-[240px] flex-col bg-card">
       <div className="p-6">
-        <h2 className="text-lg font-semibold text-sidebar-foreground">
+        <h2 className="text-lg font-semibold text-foreground">
           Transfer Pricing Hub
         </h2>
-        <p className="text-sm text-sidebar-foreground/60">
+        <p className="text-sm text-foreground/70">
           Welcome, {user?.username}
         </p>
       </div>
       <ScrollArea className="flex-1 px-3">
         <div className="space-y-6 py-2">
           <NavSection title="Main" items={mainNavItems} />
-          <Separator className="mx-3 bg-sidebar-foreground/10" />
+          <Separator className="mx-3 bg-foreground/10" />
           <NavSection title="Insights & Analytics" items={insightsNavItems} />
-          <Separator className="mx-3 bg-sidebar-foreground/10" />
+          <Separator className="mx-3 bg-foreground/10" />
           <NavSection title="System" items={systemNavItems} />
-          <Separator className="mx-3 bg-sidebar-foreground/10" />
+          <Separator className="mx-3 bg-foreground/10" />
           <NavSection title="Settings" items={settingsNavItems} />
         </div>
       </ScrollArea>
-      <div className="p-4 border-t border-sidebar-border">
+      <div className="p-4 border-t border-foreground/10">
         <Button
           variant="ghost"
-          className="w-full justify-start gap-2 text-sm font-medium text-sidebar-foreground/60 hover:text-sidebar-foreground"
+          className="w-full justify-start gap-2 text-sm font-medium text-foreground/70 hover:text-foreground hover:bg-primary/5"
           onClick={logout}
         >
           <LogOut className="h-4 w-4" />

@@ -75,13 +75,13 @@ export default function Documents() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4">
-      <div className="mb-6 flex justify-between items-center">
-        <h1 className="text-2xl font-semibold">My files</h1>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-semibold text-foreground">My files</h1>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button>
-              <Upload className="h-4 w-4 mr-2" />
+            <Button variant="default" className="gap-2">
+              <Upload className="h-4 w-4" />
               Upload
             </Button>
           </DialogTrigger>
@@ -93,50 +93,53 @@ export default function Documents() {
               type="file"
               onChange={handleFileUpload}
               accept=".xlsx,.xls,.doc,.docx,.pdf,.txt"
+              className="text-foreground"
             />
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="bg-white rounded-lg border shadow-sm">
+      <div className="bg-card rounded-lg border shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Modified</TableHead>
-              <TableHead>File size</TableHead>
-              <TableHead>Sharing</TableHead>
-              <TableHead>Actions</TableHead>
+              <TableHead className="text-foreground/70">Name</TableHead>
+              <TableHead className="text-foreground/70">Modified</TableHead>
+              <TableHead className="text-foreground/70">File size</TableHead>
+              <TableHead className="text-foreground/70">Sharing</TableHead>
+              <TableHead className="text-foreground/70">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {documents?.map((doc) => (
-              <TableRow key={doc.id} className="hover:bg-gray-50">
-                <TableCell className="font-medium flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-blue-500" />
+              <TableRow key={doc.id} className="hover:bg-muted/50">
+                <TableCell className="font-medium text-foreground flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
                   {doc.title}
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-foreground/70">
                   {doc.updatedAt ? format(new Date(doc.updatedAt), 'MMM d, yyyy') : 'N/A'}
                 </TableCell>
-                <TableCell>{formatFileSize(doc.metadata?.size)}</TableCell>
-                <TableCell>Private</TableCell>
+                <TableCell className="text-foreground/70">{formatFileSize(doc.metadata?.size)}</TableCell>
+                <TableCell className="text-foreground/70">Private</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => openDocument(doc.id)}
+                      className="gap-2 text-foreground hover:text-foreground"
                     >
-                      <ExternalLink className="h-4 w-4 mr-2" />
+                      <ExternalLink className="h-4 w-4" />
                       Open
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => downloadDocument(doc.id, doc.title)}
+                      className="gap-2 text-foreground hover:text-foreground"
                     >
-                      <Download className="h-4 w-4 mr-2" />
+                      <Download className="h-4 w-4" />
                       Download
                     </Button>
                   </div>
@@ -145,7 +148,7 @@ export default function Documents() {
             ))}
             {!documents?.length && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={5} className="text-center py-8 text-foreground/60">
                   No files yet. Upload your first file to get started.
                 </TableCell>
               </TableRow>
