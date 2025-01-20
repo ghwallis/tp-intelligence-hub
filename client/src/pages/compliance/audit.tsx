@@ -10,21 +10,21 @@ type Audit = {
   jurisdiction: string;
   period: string;
   stage: string;
-  status: string;
+  status: "in-progress" | "action-needed" | "completed" | "high" | "low" | "medium" | "compliant" | "upcoming" | "past-due" | "draft" | "pending" | "approved" | "rejected";
 };
 
 type Dispute = {
   jurisdiction: string;
   type: string;
   issue: string;
-  status: string;
+  status: "in-progress" | "action-needed" | "completed" | "high" | "low" | "medium" | "compliant" | "upcoming" | "past-due" | "draft" | "pending" | "approved" | "rejected";
 };
 
 type Resolution = {
   jurisdiction: string;
   outcome: string;
   date: string;
-  status: string;
+  status: "in-progress" | "action-needed" | "completed" | "high" | "low" | "medium" | "compliant" | "upcoming" | "past-due" | "draft" | "pending" | "approved" | "rejected";
 };
 
 const mockAudits: Audit[] = [
@@ -32,7 +32,7 @@ const mockAudits: Audit[] = [
     jurisdiction: "Germany",
     period: "2020-2022",
     stage: "Information Request",
-    status: "in-progress"
+    status: "pending"
   },
   {
     jurisdiction: "France",
@@ -47,7 +47,7 @@ const mockDisputes: Dispute[] = [
     jurisdiction: "Italy",
     type: "MAP",
     issue: "Profit Attribution",
-    status: "in-progress"
+    status: "pending"
   },
   {
     jurisdiction: "Spain",
