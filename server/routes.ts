@@ -44,7 +44,7 @@ export function registerRoutes(app: Express): Server {
     if (!req.file) return res.status(400).send("No file uploaded");
 
     try {
-      const fileContent = await fs.readFile(req.file.path);
+      // Store file metadata and path in the database
       const [doc] = await db.insert(documents)
         .values({
           title: req.file.originalname,
@@ -90,7 +90,12 @@ export function registerRoutes(app: Express): Server {
         return res.status(404).send("File not found");
       }
 
-      res.download(filePath, doc.title);
+      // Set appropriate headers for the file download
+      res.setHeader('Content-Type', doc.metadata?.mimetype || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${doc.title}"`);
+
+      // Stream the file to the response
+      res.sendFile(path.resolve(filePath));
     } catch (error) {
       console.error("Download error:", error);
       res.status(500).send("Failed to download file");
@@ -374,7 +379,7 @@ Provide concise, practical advice based on this context.`;
           case 'join':
           case 'leave':
             await db.update(collaborators)
-              .set({ 
+              .set({
                 status: message.type === 'join' ? 'online' : 'offline',
                 lastActiveAt: new Date()
               })
@@ -384,7 +389,7 @@ Provide concise, practical advice based on this context.`;
 
           case 'cursor':
             await db.update(collaborators)
-              .set({ 
+              .set({
                 cursor: message.content,
                 lastActiveAt: new Date()
               })
@@ -414,7 +419,7 @@ Provide concise, practical advice based on this context.`;
     ws.on('close', async () => {
       try {
         await db.update(collaborators)
-          .set({ 
+          .set({
             status: 'offline',
             lastActiveAt: new Date()
           })
@@ -426,4 +431,11 @@ Provide concise, practical advice based on this context.`;
   });
 
   return httpServer;
+}
+
+//Type definition for CollaborationMessage.  This needs to be added as it is not included in original or edited code.
+interface CollaborationMessage {
+    type: 'join' | 'leave' | 'cursor' | 'edit' | 'comment';
+    userId: number;
+    content?: any;
 }

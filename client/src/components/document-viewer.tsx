@@ -20,8 +20,16 @@ export function DocumentViewer({ documentId, content, title, type }: DocumentVie
   const [currentPage, setCurrentPage] = useState(1);
 
   const getOfficeOnlineUrl = () => {
-    const downloadUrl = `${window.location.origin}/api/documents/${documentId}/download`;
+    // Ensure we have the full URL for the document download
+    const baseUrl = window.location.origin;
+    const downloadUrl = `${baseUrl}/api/documents/${documentId}/download`;
+    // Office Online viewer URL
     return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(downloadUrl)}`;
+  };
+
+  const openInNewTab = () => {
+    const url = getOfficeOnlineUrl();
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   useEffect(() => {
@@ -76,18 +84,22 @@ export function DocumentViewer({ documentId, content, title, type }: DocumentVie
         <Card className="p-4 h-full">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-bold">{title}</h2>
-            <Button 
-              variant="outline" 
-              onClick={() => window.open(officeUrl, '_blank')}
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Open in New Tab
-            </Button>
+            <div className="space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={openInNewTab}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open in New Tab
+              </Button>
+            </div>
           </div>
           <iframe
             src={officeUrl}
             className="w-full h-[calc(100vh-200px)]"
             frameBorder="0"
+            title={`Office Online Viewer - ${title}`}
+            sandbox="allow-scripts allow-same-origin allow-forms"
           />
         </Card>
         <CollaborationPanel documentId={documentId} />
@@ -96,7 +108,7 @@ export function DocumentViewer({ documentId, content, title, type }: DocumentVie
   }
 
   return (
-    <div className="relative">
+    <div className="relative h-full">
       <Card className="p-4">
         <h2 className="text-xl font-bold mb-4">{title}</h2>
         {type === "text" ? (
