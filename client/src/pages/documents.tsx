@@ -37,6 +37,8 @@ import {
 import { useForm } from "react-hook-form";
 import { FileText, Plus, Users } from "lucide-react";
 import { format } from "date-fns";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Badge } from "@/components/ui/badge";
 
 export default function Documents() {
   const { documents, isLoading, createDocument } = useDocuments();
@@ -169,13 +171,31 @@ export default function Documents() {
                   {format(new Date(doc.updatedAt), "MMM d, yyyy")}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    onClick={() => setSelectedDoc(selectedDoc === doc.id ? null : doc.id)}
-                  >
-                    <Users className="h-4 w-4" />
-                  </Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant={selectedDoc === doc.id ? "default" : "secondary"}
+                          size="icon"
+                          className="relative"
+                          onClick={() => setSelectedDoc(selectedDoc === doc.id ? null : doc.id)}
+                        >
+                          <Users className="h-5 w-5" />
+                          {selectedDoc === doc.id && (
+                            <Badge
+                              variant="default"
+                              className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center"
+                            >
+                              •
+                            </Badge>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Toggle collaboration panel</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </TableCell>
               </TableRow>
             ))}
@@ -183,7 +203,6 @@ export default function Documents() {
         </Table>
       </div>
 
-      {/* Collaboration Panel */}
       {selectedDoc && <CollaborationPanel documentId={selectedDoc} />}
     </div>
   );
