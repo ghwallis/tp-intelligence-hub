@@ -42,10 +42,10 @@ function Router() {
   }
 
   return (
-    <div className="flex h-screen bg-background">
+    <div className="grid grid-cols-[240px_1fr] h-screen">
       <SidebarNav />
-      <main className="flex-1 overflow-y-auto">
-        <div className="container mx-auto p-6">
+      <main className="overflow-y-auto">
+        <div className="container py-6">
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/documents/upload" component={Documents} />
