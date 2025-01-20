@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useDocuments } from "@/hooks/use-documents";
 import { useTemplates } from "@/hooks/use-templates";
+import { CollaborationPanel } from "@/components/collaboration-panel";
 import {
   Dialog,
   DialogContent,
@@ -34,13 +35,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Users } from "lucide-react";
 import { format } from "date-fns";
 
 export default function Documents() {
   const { documents, isLoading, createDocument } = useDocuments();
   const { templates } = useTemplates();
   const [open, setOpen] = useState(false);
+  const [selectedDoc, setSelectedDoc] = useState<number | null>(null);
+
   const form = useForm({
     defaultValues: {
       title: "",
@@ -146,6 +149,7 @@ export default function Documents() {
               <TableHead>Template</TableHead>
               <TableHead>Created</TableHead>
               <TableHead>Last Updated</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -164,11 +168,23 @@ export default function Documents() {
                 <TableCell>
                   {format(new Date(doc.updatedAt), "MMM d, yyyy")}
                 </TableCell>
+                <TableCell className="text-right">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => setSelectedDoc(selectedDoc === doc.id ? null : doc.id)}
+                  >
+                    <Users className="h-4 w-4" />
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
+
+      {/* Collaboration Panel */}
+      {selectedDoc && <CollaborationPanel documentId={selectedDoc} />}
     </div>
   );
 }

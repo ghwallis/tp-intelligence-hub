@@ -98,6 +98,32 @@ export const integrationLogs = pgTable("integration_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const collaborationSessions = pgTable("collaboration_sessions", {
+  id: serial("id").primaryKey(),
+  documentId: integer("document_id").references(() => documents.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  status: text("status").notNull().default('active'),
+});
+
+export const collaborators = pgTable("collaborators", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").references(() => collaborationSessions.id),
+  userId: integer("user_id").references(() => users.id),
+  joinedAt: timestamp("joined_at").defaultNow(),
+  lastActiveAt: timestamp("last_active_at").defaultNow(),
+  status: text("status").notNull().default('online'),
+  cursor: jsonb("cursor"),
+});
+
+export const collaborationEvents = pgTable("collaboration_events", {
+  id: serial("id").primaryKey(),
+  sessionId: integer("session_id").references(() => collaborationSessions.id),
+  userId: integer("user_id").references(() => users.id),
+  eventType: text("event_type").notNull(), // 'edit', 'comment', 'highlight'
+  content: jsonb("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users);
 export const selectUserSchema = createSelectSchema(users);
 export type User = typeof users.$inferSelect;
@@ -114,3 +140,10 @@ export type SystemIntegration = typeof systemIntegrations.$inferSelect;
 export type NewSystemIntegration = typeof systemIntegrations.$inferInsert;
 export type IntegrationLog = typeof integrationLogs.$inferSelect;
 export type NewIntegrationLog = typeof integrationLogs.$inferInsert;
+
+export type CollaborationSession = typeof collaborationSessions.$inferSelect;
+export type NewCollaborationSession = typeof collaborationSessions.$inferInsert;
+export type Collaborator = typeof collaborators.$inferSelect;
+export type NewCollaborator = typeof collaborators.$inferInsert;
+export type CollaborationEvent = typeof collaborationEvents.$inferSelect;
+export type NewCollaborationEvent = typeof collaborationEvents.$inferInsert;

@@ -2,13 +2,21 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { documents, templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts, systemIntegrations, integrationLogs } from "@db/schema";
+import { documents, templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts, systemIntegrations, integrationLogs, collaborationSessions, collaborators, collaborationEvents } from "@db/schema";
 import { eq, desc } from "drizzle-orm";
 import OpenAI from "openai";
+import { WebSocketServer } from 'ws';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+interface CollaborationMessage {
+  type: 'join' | 'leave' | 'cursor' | 'edit' | 'comment';
+  sessionId: number;
+  userId: number;
+  content: any;
+}
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
@@ -233,6 +241,121 @@ Provide concise, practical advice based on this context.`;
     }
   });
 
+  // Collaboration API Routes
+  app.post("/api/collaboration/sessions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    const { documentId } = req.body;
+
+    try {
+      const [session] = await db.insert(collaborationSessions)
+        .values({ documentId })
+        .returning();
+
+      await db.insert(collaborators)
+        .values({
+          sessionId: session.id,
+          userId: req.user.id,
+          status: 'online'
+        });
+
+      res.json(session);
+    } catch (error: any) {
+      console.error("Failed to create collaboration session:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.get("/api/collaboration/sessions/:sessionId/collaborators", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    const { sessionId } = req.params;
+
+    const activeCollaborators = await db.select()
+      .from(collaborators)
+      .where(eq(collaborators.sessionId, parseInt(sessionId)))
+      .orderBy(desc(collaborators.lastActiveAt));
+
+    res.json(activeCollaborators);
+  });
+
+  // Create HTTP server
   const httpServer = createServer(app);
+
+  // Setup WebSocket server
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws/collaboration' });
+
+  wss.on('connection', async (ws, req) => {
+    if (!req.url) return ws.close();
+
+    const sessionId = new URLSearchParams(req.url.split('?')[1]).get('sessionId');
+    if (!sessionId) return ws.close();
+
+    // Broadcast to all clients in the same session
+    const broadcast = (message: CollaborationMessage) => {
+      wss.clients.forEach(client => {
+        if (client !== ws && client.readyState === ws.OPEN) {
+          client.send(JSON.stringify(message));
+        }
+      });
+    };
+
+    ws.on('message', async (data) => {
+      try {
+        const message: CollaborationMessage = JSON.parse(data.toString());
+
+        switch (message.type) {
+          case 'join':
+          case 'leave':
+            await db.update(collaborators)
+              .set({ 
+                status: message.type === 'join' ? 'online' : 'offline',
+                lastActiveAt: new Date()
+              })
+              .where(eq(collaborators.sessionId, parseInt(sessionId)))
+              .where(eq(collaborators.userId, message.userId));
+            break;
+
+          case 'cursor':
+            await db.update(collaborators)
+              .set({ 
+                cursor: message.content,
+                lastActiveAt: new Date()
+              })
+              .where(eq(collaborators.sessionId, parseInt(sessionId)))
+              .where(eq(collaborators.userId, message.userId));
+            break;
+
+          case 'edit':
+          case 'comment':
+            await db.insert(collaborationEvents)
+              .values({
+                sessionId: parseInt(sessionId),
+                userId: message.userId,
+                eventType: message.type,
+                content: message.content
+              });
+            break;
+        }
+
+        broadcast(message);
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    });
+
+    // Handle client disconnect
+    ws.on('close', async () => {
+      try {
+        await db.update(collaborators)
+          .set({ 
+            status: 'offline',
+            lastActiveAt: new Date()
+          })
+          .where(eq(collaborators.sessionId, parseInt(sessionId)));
+      } catch (error) {
+        console.error('WebSocket close error:', error);
+      }
+    });
+  });
+
   return httpServer;
 }
