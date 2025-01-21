@@ -141,6 +141,47 @@ Respond with JSON only.`;
 }
 
 // Add this function near the top with other helper functions
+async function analyzeNotice(text: string): Promise<any> {
+  const analysisPrompt = `You are a transfer pricing expert. Analyze this notice and provide:
+1. A clear and concise summary (max 3 sentences)
+2. Key issues or requirements identified (list up to 5)
+3. Suggested actions or responses (list up to 5)
+4. Required documentation (list up to 5)
+5. Risk assessment with factors
+
+Format your response as JSON:
+{
+  "summary": "string",
+  "keyIssues": ["string"],
+  "suggestedResponses": ["string"],
+  "requiredDocuments": ["string"],
+  "riskAssessment": {
+    "level": "low|medium|high",
+    "factors": ["string"]
+  }
+}
+
+Respond with JSON only.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: analysisPrompt },
+        { role: "user", content: text }
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(response.choices[0].message.content);
+  } catch (error) {
+    console.error("OpenAI analysis error:", error);
+    throw new Error("Failed to analyze notice content");
+  }
+}
+
+// Add this function near the top with other helper functions
 async function analyzeSentiment(text: string): Promise<{
   sentiment: string;
   score: number;
@@ -229,7 +270,10 @@ export function registerRoutes(app: Express): Server {
 
       console.log("Content extracted, length:", fileContent.length);
 
-      // Create notice record
+      // Analyze the notice content
+      const analysis = await analyzeNotice(fileContent);
+
+      // Create notice record with analysis
       const [notice] = await db.insert(auditNotices)
         .values({
           title: req.body.title || req.file.originalname,
@@ -243,18 +287,41 @@ export function registerRoutes(app: Express): Server {
             size: req.file.size,
             mimetype: fileType?.mime || req.file.mimetype,
             originalName: req.file.originalname,
-            filePath: req.file.path
+            filePath: req.file.path,
+            analysis
           }
         })
         .returning();
 
+      // Create analysis record
+      const [analysis_record] = await db.insert(noticeAnalysis)
+        .values({
+          noticeId: notice.id,
+          summary: analysis.summary,
+          keyIssues: analysis.keyIssues,
+          suggestedResponses: analysis.suggestedResponses,
+          requiredDocuments: analysis.requiredDocuments,
+          riskLevel: analysis.riskAssessment.level,
+          riskFactors: analysis.riskAssessment.factors,
+          status: 'completed'
+        })
+        .returning();
+
       res.json({
-        notice
+        notice,
+        analysis: analysis_record
       });
 
     } catch (error: any) {
       console.error("Notice upload error:", error);
-      res.status(500).json({ message: error.message });
+      // Clean up uploaded file in case of error
+      if (req.file?.path) {
+        fs.unlink(req.file.path).catch(console.error);
+      }
+      res.status(500).json({ 
+        error: error.message || "Failed to process notice",
+        details: error.toString()
+      });
     }
   });
 
