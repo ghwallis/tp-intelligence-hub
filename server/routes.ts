@@ -137,7 +137,16 @@ Respond with JSON only.`;
 }
 
 export function registerRoutes(app: Express): Server {
+  // Set up authentication routes first
   setupAuth(app);
+
+  // Test endpoint to verify auth is working
+  app.get("/api/auth-test", (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Not authenticated");
+    }
+    res.json({ message: "Authentication working", user: req.user });
+  });
 
   // Notice Management Routes
   app.post("/api/notices/upload", upload.single('file'), async (req, res) => {
@@ -351,7 +360,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Rest of the routes...
   app.get("/api/documents", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
     const docs = await db.select().from(documents).where(eq(documents.userId, req.user.id));

@@ -17,8 +17,6 @@ import Controversy from "@/pages/controversy";
 import NoticeManagement from "@/pages/controversy/notices";
 import AuditManagement from "@/pages/controversy/audit";
 import ControversyDocumentation from "@/pages/controversy/documentation";
-import TimelineTracker from "@/pages/controversy/timeline";
-import DisputeResolution from "@/pages/controversy/dispute";
 import Analytics from "@/pages/analytics";
 import AIInsights from "@/pages/ai-insights";
 import Benchmarking from "@/pages/benchmarking";
@@ -35,12 +33,6 @@ import Collaboration from "@/pages/collaboration";
 import Deadlines from "@/pages/deadlines";
 import VersionControl from "@/pages/version-control";
 import Workflow from "@/pages/workflow";
-
-// Import compliance-specific pages
-import BEPSCompliance from "@/pages/compliance/beps";
-import EUATAD from "@/pages/compliance/eu-atad";
-import PillarTwo from "@/pages/compliance/pillar-two";
-import APAManagement from "@/pages/compliance/apa";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -69,16 +61,10 @@ function Router() {
               <Route path="/" component={Dashboard} />
               <Route path="/documentation" component={Documentation} />
               <Route path="/compliance" component={Compliance} />
-              <Route path="/compliance/beps" component={BEPSCompliance} />
-              <Route path="/compliance/eu-atad" component={EUATAD} />
-              <Route path="/compliance/pillar-two" component={PillarTwo} />
-              <Route path="/compliance/apa" component={APAManagement} />
               <Route path="/controversy" component={Controversy} />
               <Route path="/controversy/notices" component={NoticeManagement} />
               <Route path="/controversy/audit" component={AuditManagement} />
               <Route path="/controversy/documentation" component={ControversyDocumentation} />
-              <Route path="/controversy/timeline" component={TimelineTracker} />
-              <Route path="/controversy/dispute" component={DisputeResolution} />
               <Route path="/analytics" component={Analytics} />
               <Route path="/ai-insights" component={AIInsights} />
               <Route path="/benchmarking" component={Benchmarking} />
