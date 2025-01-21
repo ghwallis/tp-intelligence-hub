@@ -74,7 +74,7 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
     const loadingTask = pdfjsLib.getDocument({
       data,
       useWorker: false, // Disable worker to avoid compatibility issues
-      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@4.0.269/standard_fonts/`,
+      standardFontDataUrl: `file://${__dirname}/node_modules/pdfjs-dist/standard_fonts/`,
     });
     const pdf = await loadingTask.promise;
     let text = '';
@@ -91,7 +91,7 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
     return text || "No text content could be extracted from PDF";
   } catch (error) {
     console.error("PDF extraction error:", error);
-    return "Error extracting text from PDF. File stored successfully.";
+    throw new Error("Failed to extract text from PDF: " + error.message);
   }
 }
 
@@ -894,6 +894,7 @@ Format your response as a JSON object with these exact fields:
 }`;
 
       const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
         model: "gpt-3.5-turbo",
         messages: [
           { role: "system", content: systemPrompt }
