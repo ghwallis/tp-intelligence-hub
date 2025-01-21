@@ -1,7 +1,8 @@
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { FileText, GripVertical } from "lucide-react";
+import { FileText, GripVertical, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 type Document = {
   id: string;
@@ -14,9 +15,10 @@ type Document = {
 type DocumentListProps = {
   documents: Document[];
   onDragEnd: (result: any) => void;
+  onDelete: (id: string) => void;
 };
 
-export function DocumentList({ documents, onDragEnd }: DocumentListProps) {
+export function DocumentList({ documents, onDragEnd, onDelete }: DocumentListProps) {
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <Droppable droppableId="documents">
@@ -55,8 +57,19 @@ export function DocumentList({ documents, onDragEnd }: DocumentListProps) {
                       </p>
                     </div>
 
-                    <div className="ml-4 text-sm text-muted-foreground">
-                      {doc.lastModified}
+                    <div className="flex items-center gap-4">
+                      <div className="text-sm text-muted-foreground">
+                        {doc.lastModified}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => onDelete(doc.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span className="sr-only">Delete document</span>
+                      </Button>
                     </div>
                   </Card>
                 )}

@@ -48,6 +48,14 @@ export default function Documents() {
     });
   };
 
+  const handleDelete = (id: string) => {
+    setDocuments((prev) => prev.filter((doc) => doc.id !== id));
+    toast({
+      title: "Document deleted",
+      description: "The document has been successfully removed.",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -71,7 +79,11 @@ export default function Documents() {
             </Button>
           </div>
 
-          <DocumentList documents={documents} onDragEnd={handleDragEnd} />
+          <DocumentList 
+            documents={documents} 
+            onDragEnd={handleDragEnd}
+            onDelete={handleDelete} 
+          />
         </CardContent>
       </Card>
     </div>
