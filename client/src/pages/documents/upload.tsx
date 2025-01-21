@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileUpload } from "lucide-react";
+import { Upload } from "lucide-react";
 
 export default function DocumentUpload() {
   return (
@@ -19,7 +19,7 @@ export default function DocumentUpload() {
         </CardHeader>
         <CardContent>
           <div className="border-2 border-dashed rounded-lg p-8 text-center">
-            <FileUpload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
+            <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
             <div className="text-sm text-muted-foreground">
               Drag and drop your files here, or click to browse
             </div>
