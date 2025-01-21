@@ -136,6 +136,53 @@ Respond with JSON only.`;
   }
 }
 
+// Add this function near the top with other helper functions
+async function analyzeSentiment(text: string): Promise<{
+  sentiment: string;
+  score: number;
+  keyDrivers: string[];
+  riskIndicators: string[];
+  complianceTone: string;
+  analysis: string;
+}> {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert in transfer pricing document analysis. Analyze the sentiment and tone of transfer pricing documents, focusing on:
+1. Overall sentiment (positive/negative/neutral)
+2. Key sentiment drivers
+3. Risk indicators
+4. Compliance tone
+5. Detailed analysis
+
+Format your response as a JSON object with these exact fields:
+{
+  "sentiment": "positive" | "negative" | "neutral",
+  "score": number between 0 and 1,
+  "keyDrivers": string[],
+  "riskIndicators": string[],
+  "complianceTone": string,
+  "analysis": string
+}`,
+        },
+        {
+          role: "user",
+          content: text,
+        },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    return JSON.parse(response.choices[0].message.content);
+  } catch (error) {
+    console.error("Sentiment analysis error:", error);
+    throw new Error("Failed to analyze document sentiment");
+  }
+}
+
 export function registerRoutes(app: Express): Server {
   // Set up authentication routes first
   setupAuth(app);
@@ -386,26 +433,48 @@ You can access current transfer pricing developments and news. When asked about 
     res.json(docs);
   });
 
+  // Update the existing document upload endpoint to automatically perform sentiment analysis
   app.post("/api/documents/upload", upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
     if (!req.file) return res.status(400).send("No file uploaded");
 
     try {
+      // Extract text content (existing code remains the same)
+      const fileType = await fileTypeFromFile(req.file.path);
+      let fileContent = '';
+
+      if (fileType?.mime.startsWith('image/')) {
+        fileContent = await extractTextFromImage(req.file.path);
+      } else if (fileType?.mime === 'application/pdf') {
+        fileContent = await extractTextFromPDF(req.file.path);
+      } else {
+        fileContent = await fs.readFile(req.file.path, 'utf-8');
+      }
+
+      // Perform sentiment analysis on the extracted content
+      const sentimentAnalysis = await analyzeSentiment(fileContent);
+
+      // Save document with sentiment analysis
       const [doc] = await db.insert(documents)
         .values({
           title: req.file.originalname,
-          content: req.file.path,
+          content: fileContent,
           userId: req.user.id,
-          status: 'draft',
+          status: 'analyzed',
           metadata: {
             size: req.file.size,
-            mimetype: req.file.mimetype,
-            originalName: req.file.originalname
+            mimetype: fileType?.mime || req.file.mimetype,
+            originalName: req.file.originalname,
+            filePath: req.file.path,
+            sentimentAnalysis
           }
         })
         .returning();
 
-      res.json(doc);
+      res.json({
+        document: doc,
+        analysis: sentimentAnalysis
+      });
     } catch (error: any) {
       console.error("Upload error:", error);
       res.status(500).send(error.message || "Failed to process upload");
@@ -897,6 +966,55 @@ Format your response as a JSON object with these exact fields:
     } catch (error: any) {
       console.error("Failed to fetch notice timeline:", error);
       res.status(500).send(error.message);
+    }
+  });
+
+  // Add this new endpoint after the document upload endpoints
+  app.post("/api/documents/:id/analyze-sentiment", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      // Get the document
+      const [doc] = await db
+        .select()
+        .from(documents)
+        .where(eq(documents.id, parseInt(req.params.id)))
+        .limit(1);
+
+      if (!doc) {
+        return res.status(404).send("Document not found");
+      }
+
+      if (doc.userId !== req.user.id) {
+        return res.status(403).send("Access denied");
+      }
+
+      // Get the document content
+      const content = doc.content;
+      if (!content) {
+        return res.status(400).send("Document has no content to analyze");
+      }
+
+      // Perform sentiment analysis
+      const analysis = await analyzeSentiment(content);
+
+      // Update the document with sentiment analysis results
+      const [updated] = await db
+        .update(documents)
+        .set({
+          metadata: {
+            ...doc.metadata,
+            sentimentAnalysis: analysis
+          },
+          status: 'analyzed'
+        })
+        .where(eq(documents.id, doc.id))
+        .returning();
+
+      res.json(analysis);
+    } catch (error: any) {
+      console.error("Document sentiment analysis error:", error);
+      res.status(500).json({ message: error.message });
     }
   });
 
