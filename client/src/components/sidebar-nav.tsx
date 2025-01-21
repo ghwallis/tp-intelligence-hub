@@ -3,7 +3,6 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Upload,
-  FileSpreadsheet,
   AlertTriangle,
   FileText,
   BarChart2,
@@ -42,11 +41,6 @@ const mainNavItems = [
     title: "Document Upload",
     href: "/documents/upload",
     icon: Upload,
-  },
-  {
-    title: "Document Processing",
-    href: "/documents/processing",
-    icon: FileSpreadsheet,
   },
   {
     title: "Controversy Management",
