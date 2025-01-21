@@ -83,7 +83,7 @@ export const monitoringAlerts = pgTable("monitoring_alerts", {
 export const systemIntegrations = pgTable("system_integrations", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  type: text("type").notNull(), // 'erp' or 'tax'
+  type: text("type").notNull(), 
   config: jsonb("config").notNull(),
   status: text("status").notNull().default('inactive'),
   userId: integer("user_id").references(() => users.id),
@@ -121,7 +121,7 @@ export const collaborationEvents = pgTable("collaboration_events", {
   id: serial("id").primaryKey(),
   sessionId: integer("session_id").references(() => collaborationSessions.id),
   userId: integer("user_id").references(() => users.id),
-  eventType: text("event_type").notNull(), // 'edit', 'comment', 'highlight'
+  eventType: text("event_type").notNull(), 
   content: jsonb("content").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -132,11 +132,50 @@ export const complianceFeedback = pgTable("compliance_feedback", {
   complianceCheckId: integer("compliance_check_id").references(() => complianceChecks.id),
   rating: integer("rating").notNull(),
   comment: text("comment"),
-  type: text("type").notNull(), // 'suggestion', 'issue', 'general'
+  type: text("type").notNull(), 
   status: text("status").default('pending'),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
+});
+
+export const auditNotices = pgTable("audit_notices", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  noticeType: text("notice_type").notNull(), 
+  jurisdiction: text("jurisdiction").notNull(),
+  receivedDate: timestamp("received_date").notNull(),
+  dueDate: timestamp("due_date"),
+  status: text("status").notNull().default('pending'), 
+  priority: text("priority").notNull().default('medium'), 
+  userId: integer("user_id").references(() => users.id),
+  metadata: jsonb("metadata"), 
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const noticeAnalysis = pgTable("notice_analysis", {
+  id: serial("id").primaryKey(),
+  noticeId: integer("notice_id").references(() => auditNotices.id),
+  summary: text("summary").notNull(),
+  keyIssues: jsonb("key_issues").notNull(), 
+  suggestedResponses: jsonb("suggested_responses"), 
+  requiredDocuments: jsonb("required_documents"), 
+  riskAssessment: jsonb("risk_assessment"), 
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const noticeTimelines = pgTable("notice_timelines", {
+  id: serial("id").primaryKey(),
+  noticeId: integer("notice_id").references(() => auditNotices.id),
+  milestone: text("milestone").notNull(),
+  dueDate: timestamp("due_date").notNull(),
+  status: text("status").notNull().default('pending'),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const insertUserSchema = createInsertSchema(users);
@@ -165,3 +204,10 @@ export type NewCollaborationEvent = typeof collaborationEvents.$inferInsert;
 
 export type ComplianceFeedback = typeof complianceFeedback.$inferSelect;
 export type NewComplianceFeedback = typeof complianceFeedback.$inferInsert;
+
+export type AuditNotice = typeof auditNotices.$inferSelect;
+export type NewAuditNotice = typeof auditNotices.$inferInsert;
+export type NoticeAnalysis = typeof noticeAnalysis.$inferSelect;
+export type NewNoticeAnalysis = typeof noticeAnalysis.$inferInsert;
+export type NoticeTimeline = typeof noticeTimelines.$inferSelect;
+export type NewNoticeTimeline = typeof noticeTimelines.$inferInsert;

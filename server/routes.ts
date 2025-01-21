@@ -2,7 +2,10 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { users, documents, templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts, systemIntegrations, integrationLogs, collaborationSessions, collaborators, collaborationEvents, complianceFeedback } from "@db/schema";
+import { 
+  users, documents, auditNotices, noticeAnalysis, noticeTimelines,
+  templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts, systemIntegrations, integrationLogs, collaborationSessions, collaborators, collaborationEvents, complianceFeedback 
+} from "@db/schema";
 import { eq, desc } from "drizzle-orm";
 import OpenAI from "openai";
 import { WebSocketServer } from 'ws';
@@ -598,6 +601,148 @@ Format your response as a JSON object with these exact fields:
 
     } catch (error: any) {
       console.error("Risk explanation error:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Notice Management Routes
+  app.post("/api/notices/upload", upload.single('file'), async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    if (!req.file) return res.status(400).send("No file uploaded");
+
+    try {
+      // Create notice record
+      const [notice] = await db.insert(auditNotices)
+        .values({
+          title: req.body.title || req.file.originalname,
+          content: req.file.path,
+          noticeType: req.body.noticeType || 'audit',
+          jurisdiction: req.body.jurisdiction || 'Unknown',
+          receivedDate: new Date(),
+          dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
+          userId: req.user.id,
+          metadata: {
+            size: req.file.size,
+            mimetype: req.file.mimetype,
+            originalName: req.file.originalname
+          }
+        })
+        .returning();
+
+      // Analyze notice content using OpenAI
+      const fileContent = await fs.readFile(req.file.path, 'utf-8');
+      const analysisPrompt = `Analyze this audit/dispute notice and provide:
+1. A brief summary
+2. Key issues or questions raised
+3. Suggested responses or actions
+4. Required documentation
+5. Risk assessment
+
+Format the response as a JSON object with these exact fields:
+{
+  "summary": "string",
+  "keyIssues": ["string"],
+  "suggestedResponses": ["string"],
+  "requiredDocuments": ["string"],
+  "riskAssessment": {
+    "level": "string",
+    "factors": ["string"]
+  }
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: analysisPrompt },
+          { role: "user", content: fileContent }
+        ],
+        response_format: { type: "json_object" }
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content);
+
+      // Store analysis results
+      const [savedAnalysis] = await db.insert(noticeAnalysis)
+        .values({
+          noticeId: notice.id,
+          summary: analysis.summary,
+          keyIssues: analysis.keyIssues,
+          suggestedResponses: analysis.suggestedResponses,
+          requiredDocuments: analysis.requiredDocuments,
+          riskAssessment: analysis.riskAssessment
+        })
+        .returning();
+
+      // Create timeline entries for key dates
+      if (notice.dueDate) {
+        await db.insert(noticeTimelines)
+          .values({
+            noticeId: notice.id,
+            milestone: "Response Due",
+            dueDate: notice.dueDate,
+            notes: "Final response submission deadline"
+          });
+      }
+
+      res.json({
+        notice,
+        analysis: savedAnalysis
+      });
+
+    } catch (error: any) {
+      console.error("Notice upload error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/notices", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      const notices = await db.select()
+        .from(auditNotices)
+        .where(eq(auditNotices.userId, req.user.id))
+        .orderBy(desc(auditNotices.createdAt));
+
+      res.json(notices);
+    } catch (error: any) {
+      console.error("Failed to fetch notices:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.get("/api/notices/:id/analysis", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      const [analysis] = await db.select()
+        .from(noticeAnalysis)
+        .where(eq(noticeAnalysis.noticeId, parseInt(req.params.id)))
+        .limit(1);
+
+      if (!analysis) {
+        return res.status(404).send("Analysis not found");
+      }
+
+      res.json(analysis);
+    } catch (error: any) {
+      console.error("Failed to fetch notice analysis:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.get("/api/notices/:id/timeline", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      const timeline = await db.select()
+        .from(noticeTimelines)
+        .where(eq(noticeTimelines.noticeId, parseInt(req.params.id)))
+        .orderBy(desc(noticeTimelines.dueDate));
+
+      res.json(timeline);
+    } catch (error: any) {
+      console.error("Failed to fetch notice timeline:", error);
       res.status(500).send(error.message);
     }
   });
