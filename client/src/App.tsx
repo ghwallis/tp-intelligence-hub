@@ -8,6 +8,7 @@ import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 import { SidebarNav } from "@/components/sidebar-nav";
 import NoticeManagement from "@/pages/controversy/notices";
+import { ThemeProvider } from "@/components/theme-provider";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -46,8 +47,10 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <ThemeProvider defaultTheme="system">
+        <Router />
+        <Toaster />
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
