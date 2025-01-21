@@ -11,7 +11,7 @@ import OpenAI from "openai";
 import { WebSocketServer } from 'ws';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs/promises';
+import fs, { unlink } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { fileTypeFromFile } from 'file-type';
@@ -271,6 +271,83 @@ export function registerRoutes(app: Express): Server {
     } catch (error: any) {
       console.error("Failed to fetch notice analysis:", error);
       res.status(500).send(error.message);
+    }
+  });
+
+  app.delete("/api/notices/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      const noticeId = parseInt(req.params.id);
+      const [notice] = await db.select()
+        .from(auditNotices)
+        .where(eq(auditNotices.id, noticeId))
+        .limit(1);
+
+      if (!notice) {
+        return res.status(404).send("Notice not found");
+      }
+
+      if (notice.userId !== req.user.id) {
+        return res.status(403).send("Access denied");
+      }
+
+      // Delete the physical file if it exists
+      if (notice.metadata?.filePath) {
+        try {
+          await unlink(notice.metadata.filePath);
+        } catch (error) {
+          console.error("Failed to delete file:", error);
+          // Continue with deletion even if file removal fails
+        }
+      }
+
+      // Delete the notice from the database
+      await db.delete(auditNotices)
+        .where(eq(auditNotices.id, noticeId));
+
+      // Also delete associated analysis
+      await db.delete(noticeAnalysis)
+        .where(eq(noticeAnalysis.noticeId, noticeId));
+
+      res.json({ message: "Notice deleted successfully" });
+    } catch (error: any) {
+      console.error("Delete notice error:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.get("/api/notices/:id/download", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      const noticeId = parseInt(req.params.id);
+      const [notice] = await db.select()
+        .from(auditNotices)
+        .where(eq(auditNotices.id, noticeId))
+        .limit(1);
+
+      if (!notice) {
+        return res.status(404).send("Notice not found");
+      }
+
+      if (notice.userId !== req.user.id) {
+        return res.status(403).send("Access denied");
+      }
+
+      const filePath = notice.metadata?.filePath;
+      if (!filePath || typeof filePath !== 'string') {
+        return res.status(404).send("File not found");
+      }
+
+      const metadata = notice.metadata as Record<string, any>;
+      res.setHeader('Content-Type', metadata?.mimetype || 'application/octet-stream');
+      res.setHeader('Content-Disposition', `attachment; filename="${metadata?.originalName || `notice-${notice.id}`}"`);
+
+      res.sendFile(path.resolve(filePath));
+    } catch (error: any) {
+      console.error("Download error:", error);
+      res.status(500).json({ message: error.message });
     }
   });
 
@@ -820,7 +897,7 @@ Format your response as a JSON object with these exact fields:
     }
   });
 
-  app.get("/api/notices/:id/timeline", async (req, res) => {
+  app.get("/api/notices/:id/timeline", async (req, res) =>{
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
 
     try {

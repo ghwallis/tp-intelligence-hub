@@ -1,10 +1,20 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, Search, Loader2 } from "lucide-react";
+import { Upload, Search, Loader2, FileText, Download, Trash2, AlertCircle } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Notice = {
   id: number;
@@ -16,6 +26,12 @@ type Notice = {
   dueDate: string | null;
   status: string;
   priority: string;
+  metadata?: {
+    size: number;
+    mimetype: string;
+    originalName: string;
+    filePath: string;
+  };
 };
 
 type Analysis = {
@@ -33,6 +49,8 @@ export default function NoticeManagement() {
   const { toast } = useToast();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [noticeToDelete, setNoticeToDelete] = useState<Notice | null>(null);
 
   const { data: notices = [], isLoading: isLoadingNotices } = useQuery<Notice[]>({
     queryKey: ['/api/notices'],
@@ -68,6 +86,39 @@ export default function NoticeManagement() {
     onError: (error: Error) => {
       toast({
         title: "Failed to upload notice",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (noticeId: number) => {
+      const response = await fetch(`/api/notices/${noticeId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notices'] });
+      if (selectedNotice?.id === noticeToDelete?.id) {
+        setSelectedNotice(null);
+      }
+      toast({
+        title: "Notice deleted",
+        description: "The notice has been permanently deleted.",
+      });
+      setNoticeToDelete(null);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to delete notice",
         description: error.message,
         variant: "destructive",
       });
@@ -123,6 +174,45 @@ export default function NoticeManagement() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!noticeToDelete) return;
+    await deleteMutation.mutateAsync(noticeToDelete.id);
+  };
+
+  const downloadDocument = async (notice: Notice) => {
+    try {
+      const response = await fetch(`/api/notices/${notice.id}/download`, {
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      // Create a blob from the response
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = notice.metadata?.originalName || `notice-${notice.id}`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Download started",
+        description: "Your document is being downloaded.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Download failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (isLoadingNotices) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -149,7 +239,7 @@ export default function NoticeManagement() {
                 type="file"
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={handleNoticeUpload}
-                accept=".pdf,.doc,.docx,.txt"
+                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.tiff"
                 disabled={uploadMutation.isPending}
               />
               <Button 
@@ -166,7 +256,7 @@ export default function NoticeManagement() {
                     {uploadMutation.isPending ? "Uploading..." : "Drop notice here or click to upload"}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Supports PDF and document formats
+                    Supports PDF, documents, and images
                   </div>
                 </div>
               </Button>
@@ -182,26 +272,53 @@ export default function NoticeManagement() {
                 {notices.map((notice) => (
                   <Card
                     key={notice.id}
-                    className={`p-4 cursor-pointer hover:bg-accent ${
+                    className={`p-4 hover:bg-accent ${
                       selectedNotice?.id === notice.id ? 'border-primary' : ''
                     }`}
-                    onClick={() => setSelectedNotice(notice)}
                   >
-                    <h3 className="font-medium">{notice.title}</h3>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      {notice.jurisdiction} • {new Date(notice.receivedDate).toLocaleDateString()}
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        notice.priority === 'high' ? 'bg-destructive/10 text-destructive' :
-                        notice.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-green-100 text-green-800'
-                      }`}>
-                        {notice.priority}
-                      </span>
-                      <span className="px-2 py-1 rounded-full text-xs bg-secondary text-secondary-foreground">
-                        {notice.status}
-                      </span>
+                    <div className="flex justify-between items-start">
+                      <div 
+                        className="flex-1 cursor-pointer"
+                        onClick={() => setSelectedNotice(notice)}
+                      >
+                        <h3 className="font-medium">{notice.title}</h3>
+                        <div className="text-sm text-muted-foreground mt-1">
+                          {notice.jurisdiction} • {new Date(notice.receivedDate).toLocaleDateString()}
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            notice.priority === 'high' ? 'bg-destructive/10 text-destructive' :
+                            notice.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {notice.priority}
+                          </span>
+                          <span className="px-2 py-1 rounded-full text-xs bg-secondary text-secondary-foreground">
+                            {notice.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => downloadDocument(notice)}
+                          title="Download original document"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setNoticeToDelete(notice);
+                            setDeleteConfirmOpen(true);
+                          }}
+                          title="Delete notice"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </Card>
                 ))}
@@ -232,11 +349,18 @@ export default function NoticeManagement() {
                 {isAnalyzing ? "Analyzing..." : "Analyze Content"}
               </Button>
             </div>
-            <div className="prose max-w-none">
-              <pre className="whitespace-pre-wrap bg-muted p-4 rounded-lg">
-                {selectedNotice.content}
-              </pre>
-            </div>
+            {selectedNotice.content ? (
+              <div className="prose max-w-none">
+                <pre className="whitespace-pre-wrap bg-muted p-4 rounded-lg">
+                  {selectedNotice.content}
+                </pre>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center p-8 text-muted-foreground">
+                <AlertCircle className="h-4 w-4 mr-2" />
+                No content could be extracted from this document
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -299,6 +423,26 @@ export default function NoticeManagement() {
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this notice and its analysis. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
