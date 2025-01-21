@@ -1,7 +1,7 @@
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "wouter";
 import { X } from "lucide-react";
 
 type Country = {
@@ -57,7 +57,7 @@ const mockData: Country[] = [
 ];
 
 export default function ControversyPage() {
-  const [, navigate] = useNavigate();
+  const [, setLocation] = useLocation();
 
   return (
     <div className="space-y-6">
@@ -144,7 +144,7 @@ export default function ControversyPage() {
 
               <Button 
                 className="w-full mt-4"
-                onClick={() => navigate(`/controversy/audit/${country.name.toLowerCase()}`)}
+                onClick={() => setLocation(`/controversy/audit/${country.name.toLowerCase()}`)}
               >
                 View Details
               </Button>
