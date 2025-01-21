@@ -69,8 +69,69 @@ async function extractTextFromImage(filePath: string): Promise<string> {
 
 // Helper function to extract text from PDF
 async function extractTextFromPDF(filePath: string): Promise<string> {
-  // For now, just return a placeholder message since we're having PDF parsing issues
-  return "PDF content will be processed later. File stored successfully.";
+  try {
+    const data = await fs.readFile(filePath);
+    const loadingTask = pdfjsLib.getDocument({
+      data,
+      useSystemFonts: true,
+      disableFontFace: true,
+    });
+    const pdf = await loadingTask.promise;
+    let text = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      text += textContent.items
+        .filter((item: any) => item.str && item.str.trim())
+        .map((item: any) => item.str)
+        .join(' ') + '\n';
+    }
+
+    return text || "No text content could be extracted from PDF";
+  } catch (error) {
+    console.error("PDF extraction error:", error);
+    return "Error extracting text from PDF. File stored successfully.";
+  }
+}
+
+// Helper function to analyze text using OpenAI
+async function analyzeText(text: string): Promise<any> {
+  const analysisPrompt = `You are a transfer pricing expert. Analyze this document and provide:
+1. A clear and concise summary (max 3 sentences)
+2. Key issues or requirements identified (list up to 5)
+3. Suggested actions or responses (list up to 5)
+4. Required documentation (list up to 5)
+5. Risk assessment with factors
+
+Format your response exactly as shown:
+{
+  "summary": "string",
+  "keyIssues": ["string"],
+  "suggestedResponses": ["string"],
+  "requiredDocuments": ["string"],
+  "riskAssessment": {
+    "level": "low|medium|high",
+    "factors": ["string"]
+  }
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: analysisPrompt },
+        { role: "user", content: text }
+      ],
+      temperature: 0.7,
+      response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(response.choices[0].message.content);
+  } catch (error) {
+    console.error("OpenAI analysis error:", error);
+    throw new Error("Failed to analyze document content");
+  }
 }
 
 export function registerRoutes(app: Express): Server {
@@ -86,21 +147,36 @@ export function registerRoutes(app: Express): Server {
       const fileType = await fileTypeFromFile(req.file.path);
       let fileContent = '';
 
+      console.log("Processing file:", {
+        path: req.file.path,
+        type: fileType?.mime || req.file.mimetype
+      });
+
       // Extract text based on file type
       if (fileType?.mime.startsWith('image/')) {
+        console.log("Processing image file...");
         fileContent = await extractTextFromImage(req.file.path);
       } else if (fileType?.mime === 'application/pdf') {
+        console.log("Processing PDF file...");
         fileContent = await extractTextFromPDF(req.file.path);
       } else {
         // For text files and other documents, read directly
+        console.log("Processing text/document file...");
         fileContent = await fs.readFile(req.file.path, 'utf-8');
       }
+
+      console.log("Content extracted, length:", fileContent.length);
+
+      // Analyze the content
+      console.log("Starting content analysis...");
+      const analysis = await analyzeText(fileContent);
+      console.log("Analysis complete");
 
       // Create notice record
       const [notice] = await db.insert(auditNotices)
         .values({
           title: req.body.title || req.file.originalname,
-          content: fileContent, // Store extracted text content
+          content: fileContent,
           noticeType: req.body.noticeType || 'audit',
           jurisdiction: req.body.jurisdiction || 'Unknown',
           receivedDate: new Date(),
@@ -110,41 +186,10 @@ export function registerRoutes(app: Express): Server {
             size: req.file.size,
             mimetype: fileType?.mime || req.file.mimetype,
             originalName: req.file.originalname,
-            filePath: req.file.path // Store file path for future reference
+            filePath: req.file.path
           }
         })
         .returning();
-
-      // Analyze notice content using OpenAI
-      const analysisPrompt = `Analyze this audit/dispute notice and provide:
-1. A brief summary
-2. Key issues or questions raised
-3. Suggested responses or actions
-4. Required documentation
-5. Risk assessment
-
-Format the response as a JSON object with these exact fields:
-{
-  "summary": "string",
-  "keyIssues": ["string"],
-  "suggestedResponses": ["string"],
-  "requiredDocuments": ["string"],
-  "riskAssessment": {
-    "level": "string",
-    "factors": ["string"]
-  }
-}`;
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: analysisPrompt },
-          { role: "user", content: fileContent }
-        ],
-        response_format: { type: "json_object" }
-      });
-
-      const analysis = JSON.parse(response.choices[0].message.content);
 
       // Store analysis results
       const [savedAnalysis] = await db.insert(noticeAnalysis)
