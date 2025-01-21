@@ -52,6 +52,13 @@ const mainNavItems = [
     title: "Controversy Management",
     href: "/controversy",
     icon: AlertTriangle,
+    items: [
+      {
+        title: "Audit Management",
+        href: "/controversy/audit",
+        icon: AlertTriangle,
+      },
+    ],
   },
   {
     title: "Documentation",
@@ -110,11 +117,6 @@ const insightsNavItems = [
         title: "APA Management",
         href: "/compliance/apa",
         icon: HandshakeIcon,
-      },
-      {
-        title: "Audit Management",
-        href: "/compliance/audit",
-        icon: AlertTriangle,
       },
     ],
   },
