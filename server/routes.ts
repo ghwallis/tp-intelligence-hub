@@ -104,7 +104,7 @@ async function analyzeText(text: string): Promise<any> {
 4. Required documentation (list up to 5)
 5. Risk assessment with factors
 
-Format your response exactly as shown:
+Format your response as JSON:
 {
   "summary": "string",
   "keyIssues": ["string"],
@@ -114,7 +114,9 @@ Format your response exactly as shown:
     "level": "low|medium|high",
     "factors": ["string"]
   }
-}`;
+}
+
+Respond with JSON only.`;
 
   try {
     const response = await openai.chat.completions.create({
@@ -167,11 +169,6 @@ export function registerRoutes(app: Express): Server {
 
       console.log("Content extracted, length:", fileContent.length);
 
-      // Analyze the content
-      console.log("Starting content analysis...");
-      const analysis = await analyzeText(fileContent);
-      console.log("Analysis complete");
-
       // Create notice record
       const [notice] = await db.insert(auditNotices)
         .values({
@@ -191,7 +188,37 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // Store analysis results
+      res.json({
+        notice
+      });
+
+    } catch (error: any) {
+      console.error("Notice upload error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Separate endpoint for analysis
+  app.post("/api/notices/:id/analyze", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      const noticeId = parseInt(req.params.id);
+      const [notice] = await db.select()
+        .from(auditNotices)
+        .where(eq(auditNotices.id, noticeId))
+        .limit(1);
+
+      if (!notice) {
+        return res.status(404).send("Notice not found");
+      }
+
+      if (notice.userId !== req.user.id) {
+        return res.status(403).send("Access denied");
+      }
+
+      const analysis = await analyzeText(notice.content);
+
       const [savedAnalysis] = await db.insert(noticeAnalysis)
         .values({
           noticeId: notice.id,
@@ -203,28 +230,51 @@ export function registerRoutes(app: Express): Server {
         })
         .returning();
 
-      // Create timeline entries for key dates
-      if (notice.dueDate) {
-        await db.insert(noticeTimelines)
-          .values({
-            noticeId: notice.id,
-            milestone: "Response Due",
-            dueDate: notice.dueDate,
-            notes: "Final response submission deadline"
-          });
-      }
-
-      res.json({
-        notice,
-        analysis: savedAnalysis
-      });
+      res.json(savedAnalysis);
 
     } catch (error: any) {
-      console.error("Notice upload error:", error);
+      console.error("Analysis error:", error);
       res.status(500).json({ message: error.message });
     }
   });
 
+  app.get("/api/notices", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      const notices = await db.select()
+        .from(auditNotices)
+        .where(eq(auditNotices.userId, req.user.id))
+        .orderBy(desc(auditNotices.createdAt));
+
+      res.json(notices);
+    } catch (error: any) {
+      console.error("Failed to fetch notices:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
+  app.get("/api/notices/:id/analysis", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      const [analysis] = await db.select()
+        .from(noticeAnalysis)
+        .where(eq(noticeAnalysis.noticeId, parseInt(req.params.id)))
+        .limit(1);
+
+      if (!analysis) {
+        return res.status(404).send("Analysis not found");
+      }
+
+      res.json(analysis);
+    } catch (error: any) {
+      console.error("Failed to fetch notice analysis:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
+  // Rest of the routes...
   app.get("/api/documents", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
     const docs = await db.select().from(documents).where(eq(documents.userId, req.user.id));

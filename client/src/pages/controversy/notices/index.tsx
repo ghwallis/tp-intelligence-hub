@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Upload, Search } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -9,6 +9,7 @@ import { queryClient } from "@/lib/queryClient";
 type Notice = {
   id: number;
   title: string;
+  content: string;
   noticeType: string;
   jurisdiction: string;
   receivedDate: string;
@@ -56,16 +57,46 @@ export default function NoticeManagementPage() {
 
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/notices'] });
+      setSelectedNotice(data.notice);
       toast({
         title: "Notice uploaded successfully",
-        description: "The notice has been uploaded and analyzed.",
+        description: "The notice has been uploaded and content extracted.",
       });
     },
     onError: (error: Error) => {
       toast({
         title: "Failed to upload notice",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const analyzeMutation = useMutation({
+    mutationFn: async (noticeId: number) => {
+      const response = await fetch(`/api/notices/${noticeId}/analyze`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(await response.text());
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/notices', selectedNotice?.id, 'analysis'] });
+      toast({
+        title: "Analysis complete",
+        description: "The notice has been analyzed successfully.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to analyze notice",
         description: error.message,
         variant: "destructive",
       });
@@ -79,9 +110,14 @@ export default function NoticeManagementPage() {
     const formData = new FormData();
     formData.append('file', file);
 
+    await uploadMutation.mutateAsync(formData);
+  };
+
+  const handleAnalyze = async () => {
+    if (!selectedNotice) return;
     setIsAnalyzing(true);
     try {
-      await uploadMutation.mutateAsync(formData);
+      await analyzeMutation.mutateAsync(selectedNotice.id);
     } finally {
       setIsAnalyzing(false);
     }
@@ -106,16 +142,16 @@ export default function NoticeManagementPage() {
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={handleNoticeUpload}
                 accept=".pdf,.doc,.docx,.txt"
-                disabled={isAnalyzing}
+                disabled={uploadMutation.isPending}
               />
               <Button 
                 className="w-full h-32 border-dashed border-2"
-                disabled={isAnalyzing}
+                disabled={uploadMutation.isPending}
               >
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="h-8 w-8" />
                   <div className="text-lg font-semibold">
-                    {isAnalyzing ? "Analyzing notice..." : "Drop notice here or click to upload"}
+                    {uploadMutation.isPending ? "Uploading..." : "Drop notice here or click to upload"}
                   </div>
                   <div className="text-sm text-muted-foreground">
                     Supports PDF and document formats
@@ -166,6 +202,28 @@ export default function NoticeManagementPage() {
           </CardContent>
         </Card>
       </div>
+
+      {selectedNotice && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Document Content</h2>
+              <Button 
+                onClick={handleAnalyze}
+                disabled={isAnalyzing || analyzeMutation.isPending}
+              >
+                <Search className="h-4 w-4 mr-2" />
+                {isAnalyzing ? "Analyzing..." : "Analyze Content"}
+              </Button>
+            </div>
+            <div className="prose max-w-none">
+              <pre className="whitespace-pre-wrap bg-muted p-4 rounded-lg">
+                {selectedNotice.content}
+              </pre>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {selectedNotice && analysis && (
         <Card>
