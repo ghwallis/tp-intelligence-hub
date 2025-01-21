@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { DocumentList } from "@/components/document-list";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Upload } from "lucide-react";
 
 // Mock data for initial testing
 const initialDocuments = [
@@ -48,13 +51,29 @@ export default function Documents() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Documents</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Document Upload</h1>
         <p className="text-muted-foreground">
           Manage and organize your transfer pricing documents
         </p>
       </div>
 
-      <DocumentList documents={documents} onDragEnd={handleDragEnd} />
+      <Card>
+        <CardContent className="p-6">
+          <div className="mb-6">
+            <Button className="w-full h-32 border-dashed border-2">
+              <div className="flex flex-col items-center gap-2">
+                <Upload className="h-8 w-8" />
+                <div className="text-lg font-semibold">Drop files here or click to upload</div>
+                <div className="text-sm text-muted-foreground">
+                  Support for PDF, Excel, and Word documents
+                </div>
+              </div>
+            </Button>
+          </div>
+
+          <DocumentList documents={documents} onDragEnd={handleDragEnd} />
+        </CardContent>
+      </Card>
     </div>
   );
 }
