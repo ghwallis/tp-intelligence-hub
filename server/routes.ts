@@ -551,6 +551,57 @@ Example format:
     }
   });
 
+  // Add after the risk assessment endpoint
+  app.post("/api/compliance/risk-explanation", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      const { area, score } = req.body;
+
+      if (!area || typeof score !== 'number') {
+        return res.status(400).send("Area and score are required");
+      }
+
+      const systemPrompt = `You are an expert transfer pricing risk assessment AI.
+Provide a detailed explanation for the risk assessment of ${area} with a risk score of ${score}/100.
+
+Your explanation should:
+1. Break down the key factors contributing to this risk level
+2. Suggest specific actions to mitigate these risks
+3. Highlight potential consequences if not addressed
+4. Reference relevant transfer pricing guidelines or best practices
+
+Format your response as a JSON object with these exact fields:
+{
+  "detailed_analysis": "Main explanation of the risk factors",
+  "mitigation_steps": ["Array of specific action items"],
+  "impact_analysis": "Description of potential consequences",
+  "recommendations": ["Array of recommendations"]
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: systemPrompt }
+        ],
+        max_tokens: 1000,
+        temperature: 0.7,
+        response_format: { type: "json_object" }
+      });
+
+      const explanation = response.choices[0]?.message?.content;
+      if (!explanation) {
+        throw new Error("Failed to generate explanation");
+      }
+
+      res.json(JSON.parse(explanation));
+
+    } catch (error: any) {
+      console.error("Risk explanation error:", error);
+      res.status(500).send(error.message);
+    }
+  });
+
   // Create HTTP server
   const httpServer = createServer(app);
 
