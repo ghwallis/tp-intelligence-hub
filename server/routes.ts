@@ -2,9 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { 
+import {
   users, documents, auditNotices, noticeAnalysis, noticeTimelines,
-  templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts, systemIntegrations, integrationLogs, collaborationSessions, collaborators, collaborationEvents, complianceFeedback 
+  templates, riskAssessments, complianceChecks, comparableCompanies, benchmarkingAnalysis, monitoringAlerts, systemIntegrations, integrationLogs, collaborationSessions, collaborators, collaborationEvents, complianceFeedback
 } from "@db/schema";
 import { eq, desc } from "drizzle-orm";
 import OpenAI from "openai";
@@ -14,6 +14,9 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { fileTypeFromFile } from 'file-type';
+import { createWorker } from 'tesseract.js';
+import * as pdfjsLib from 'pdfjs-dist';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -31,77 +34,167 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    // Accept images, PDFs, and common document formats
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'image/tiff',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
 
 // Ensure uploads directory exists
 fs.mkdir('uploads', { recursive: true }).catch(console.error);
 
+// Helper function to extract text from images using Tesseract
+async function extractTextFromImage(filePath: string): Promise<string> {
+  const worker = await createWorker();
+  await worker.loadLanguage('eng');
+  await worker.initialize('eng');
+  const { data: { text } } = await worker.recognize(filePath);
+  await worker.terminate();
+  return text;
+}
+
+// Helper function to extract text from PDF
+async function extractTextFromPDF(filePath: string): Promise<string> {
+  const data = await fs.readFile(filePath);
+  const pdf = await pdfjsLib.getDocument({ data }).promise;
+  let text = '';
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    text += content.items.map((item: any) => item.str).join(' ') + '\n';
+  }
+
+  return text;
+}
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
-  // Add a route to create initial compliance check if needed
-  app.post("/api/compliance-checks/init", async (req, res) => {
+  // Notice Management Routes
+  app.post("/api/notices/upload", upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    if (!req.file) return res.status(400).send("No file uploaded");
 
     try {
-      // Check if we already have compliance checks
-      const existingChecks = await db.select().from(complianceChecks).limit(1);
+      // Detect file type
+      const fileType = await fileTypeFromFile(req.file.path);
+      let fileContent = '';
 
-      if (existingChecks.length === 0) {
-        // Create an initial compliance check
-        const [check] = await db.insert(complianceChecks)
-          .values({
-            jurisdiction: "Global",
-            requirements: {
-              category: "Transfer Pricing",
-              items: ["Documentation", "Benchmarking", "Risk Assessment"]
-            },
-            status: "active",
-            userId: req.user.id
-          })
-          .returning();
-
-        return res.json(check);
+      // Extract text based on file type
+      if (fileType?.mime.startsWith('image/')) {
+        fileContent = await extractTextFromImage(req.file.path);
+      } else if (fileType?.mime === 'application/pdf') {
+        fileContent = await extractTextFromPDF(req.file.path);
+      } else {
+        // For text files and other documents, read directly
+        fileContent = await fs.readFile(req.file.path, 'utf-8');
       }
 
-      return res.json(existingChecks[0]);
+      // Create notice record
+      const [notice] = await db.insert(auditNotices)
+        .values({
+          title: req.body.title || req.file.originalname,
+          content: fileContent, // Store extracted text content
+          noticeType: req.body.noticeType || 'audit',
+          jurisdiction: req.body.jurisdiction || 'Unknown',
+          receivedDate: new Date(),
+          dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
+          userId: req.user.id,
+          metadata: {
+            size: req.file.size,
+            mimetype: fileType?.mime || req.file.mimetype,
+            originalName: req.file.originalname,
+            filePath: req.file.path // Store file path for future reference
+          }
+        })
+        .returning();
+
+      // Analyze notice content using OpenAI
+      const analysisPrompt = `Analyze this audit/dispute notice and provide:
+1. A brief summary
+2. Key issues or questions raised
+3. Suggested responses or actions
+4. Required documentation
+5. Risk assessment
+
+Format the response as a JSON object with these exact fields:
+{
+  "summary": "string",
+  "keyIssues": ["string"],
+  "suggestedResponses": ["string"],
+  "requiredDocuments": ["string"],
+  "riskAssessment": {
+    "level": "string",
+    "factors": ["string"]
+  }
+}`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: analysisPrompt },
+          { role: "user", content: fileContent }
+        ],
+        response_format: { type: "json_object" }
+      });
+
+      const analysis = JSON.parse(response.choices[0].message.content);
+
+      // Store analysis results
+      const [savedAnalysis] = await db.insert(noticeAnalysis)
+        .values({
+          noticeId: notice.id,
+          summary: analysis.summary,
+          keyIssues: analysis.keyIssues,
+          suggestedResponses: analysis.suggestedResponses,
+          requiredDocuments: analysis.requiredDocuments,
+          riskAssessment: analysis.riskAssessment
+        })
+        .returning();
+
+      // Create timeline entries for key dates
+      if (notice.dueDate) {
+        await db.insert(noticeTimelines)
+          .values({
+            noticeId: notice.id,
+            milestone: "Response Due",
+            dueDate: notice.dueDate,
+            notes: "Final response submission deadline"
+          });
+      }
+
+      res.json({
+        notice,
+        analysis: savedAnalysis
+      });
+
     } catch (error: any) {
-      console.error("Failed to initialize compliance check:", error);
-      res.status(500).send(error.message);
+      console.error("Notice upload error:", error);
+      res.status(500).json({ message: error.message });
     }
   });
 
-  // Add the theme update endpoint
-  app.post("/api/user/theme", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
-
-    const { theme } = req.body;
-    const validThemes = ["light", "dark", "dark-grey", "system"];
-
-    if (!validThemes.includes(theme)) {
-      return res.status(400).send("Invalid theme");
-    }
-
-    try {
-      await db.update(users)
-        .set({ preferredTheme: theme })
-        .where(eq(users.id, req.user.id));
-
-      res.json({ message: "Theme updated successfully" });
-    } catch (error: any) {
-      console.error("Failed to update theme:", error);
-      res.status(500).send("Failed to update theme");
-    }
-  });
-
-  // Documents API
   app.get("/api/documents", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
     const docs = await db.select().from(documents).where(eq(documents.userId, req.user.id));
     res.json(docs);
   });
 
-  // File upload endpoint
   app.post("/api/documents/upload", upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
     if (!req.file) return res.status(400).send("No file uploaded");
@@ -128,7 +221,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // File download endpoint
   app.get("/api/documents/:id/download", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
 
@@ -605,95 +697,7 @@ Format your response as a JSON object with these exact fields:
     }
   });
 
-  // Notice Management Routes
-  app.post("/api/notices/upload", upload.single('file'), async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
-    if (!req.file) return res.status(400).send("No file uploaded");
-
-    try {
-      // Create notice record
-      const [notice] = await db.insert(auditNotices)
-        .values({
-          title: req.body.title || req.file.originalname,
-          content: req.file.path,
-          noticeType: req.body.noticeType || 'audit',
-          jurisdiction: req.body.jurisdiction || 'Unknown',
-          receivedDate: new Date(),
-          dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
-          userId: req.user.id,
-          metadata: {
-            size: req.file.size,
-            mimetype: req.file.mimetype,
-            originalName: req.file.originalname
-          }
-        })
-        .returning();
-
-      // Analyze notice content using OpenAI
-      const fileContent = await fs.readFile(req.file.path, 'utf-8');
-      const analysisPrompt = `Analyze this audit/dispute notice and provide:
-1. A brief summary
-2. Key issues or questions raised
-3. Suggested responses or actions
-4. Required documentation
-5. Risk assessment
-
-Format the response as a JSON object with these exact fields:
-{
-  "summary": "string",
-  "keyIssues": ["string"],
-  "suggestedResponses": ["string"],
-  "requiredDocuments": ["string"],
-  "riskAssessment": {
-    "level": "string",
-    "factors": ["string"]
-  }
-}`;
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: analysisPrompt },
-          { role: "user", content: fileContent }
-        ],
-        response_format: { type: "json_object" }
-      });
-
-      const analysis = JSON.parse(response.choices[0].message.content);
-
-      // Store analysis results
-      const [savedAnalysis] = await db.insert(noticeAnalysis)
-        .values({
-          noticeId: notice.id,
-          summary: analysis.summary,
-          keyIssues: analysis.keyIssues,
-          suggestedResponses: analysis.suggestedResponses,
-          requiredDocuments: analysis.requiredDocuments,
-          riskAssessment: analysis.riskAssessment
-        })
-        .returning();
-
-      // Create timeline entries for key dates
-      if (notice.dueDate) {
-        await db.insert(noticeTimelines)
-          .values({
-            noticeId: notice.id,
-            milestone: "Response Due",
-            dueDate: notice.dueDate,
-            notes: "Final response submission deadline"
-          });
-      }
-
-      res.json({
-        notice,
-        analysis: savedAnalysis
-      });
-
-    } catch (error: any) {
-      console.error("Notice upload error:", error);
-      res.status(500).json({ message: error.message });
-    }
-  });
+  // Notice Management Routes (Updated) - This section is now replaced with the updated code from the edited snippet.
 
   app.get("/api/notices", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
