@@ -10,6 +10,7 @@ import Dashboard from "@/pages/dashboard";
 import Documents from "@/pages/documents";
 import DocumentProcessing from "@/pages/document-processing";
 import Controversy from "@/pages/controversy";
+import NoticeManagement from "@/pages/controversy/notices";
 import Documentation from "@/pages/documentation";
 import Analytics from "@/pages/analytics";
 import Benchmarking from "@/pages/benchmarking";
@@ -61,6 +62,7 @@ function Router() {
               <Route path="/documents/upload" component={Documents} />
               <Route path="/documents/processing" component={DocumentProcessing} />
               <Route path="/controversy" component={Controversy} />
+              <Route path="/controversy/notices" component={NoticeManagement} />
               <Route path="/controversy/audit" component={AuditManagement} />
               <Route path="/docs" component={Documentation} />
               <Route path="/analytics" component={Analytics} />
