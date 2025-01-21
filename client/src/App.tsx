@@ -1,6 +1,6 @@
 import { Switch, Route } from "wouter";
-import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./lib/queryClient";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { useUser } from "@/hooks/use-user";
 import { Loader2 } from "lucide-react";
@@ -61,6 +61,7 @@ function Router() {
               <Route path="/documents/upload" component={Documents} />
               <Route path="/documents/processing" component={DocumentProcessing} />
               <Route path="/controversy" component={Controversy} />
+              <Route path="/controversy/audit" component={AuditManagement} />
               <Route path="/docs" component={Documentation} />
               <Route path="/analytics" component={Analytics} />
               <Route path="/benchmarking" component={Benchmarking} />
@@ -72,7 +73,6 @@ function Router() {
               <Route path="/compliance/beps" component={BEPSCompliance} />
               <Route path="/compliance/eu-atad" component={EUATAD} />
               <Route path="/compliance/apa" component={APAManagement} />
-              <Route path="/compliance/audit" component={AuditManagement} />
               <Route path="/version-control" component={VersionControl} />
               <Route path="/integrations" component={Integrations} />
               <Route path="/workflow" component={Workflow} />
