@@ -71,11 +71,15 @@ async function extractTextFromImage(filePath: string): Promise<string> {
 async function extractTextFromPDF(filePath: string): Promise<string> {
   try {
     const data = await fs.readFile(filePath);
+    // Convert Buffer to Uint8Array for PDF.js compatibility
+    const uint8Array = new Uint8Array(data);
+
     const loadingTask = pdfjsLib.getDocument({
-      data,
+      data: uint8Array,
       useWorker: false, // Disable worker to avoid compatibility issues
-      standardFontDataUrl: `file://${__dirname}/node_modules/pdfjs-dist/standard_fonts/`,
+      standardFontDataUrl: `file://${__dirname}/../node_modules/pdfjs-dist/standard_fonts/`,
     });
+
     const pdf = await loadingTask.promise;
     let text = '';
 
@@ -91,7 +95,7 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
     return text || "No text content could be extracted from PDF";
   } catch (error) {
     console.error("PDF extraction error:", error);
-    throw new Error("Failed to extract text from PDF: " + error.message);
+    throw new Error(`Failed to extract text from PDF: ${error.message}`);
   }
 }
 
@@ -439,22 +443,41 @@ You can access current transfer pricing developments and news. When asked about 
     if (!req.file) return res.status(400).send("No file uploaded");
 
     try {
-      // Extract text content (existing code remains the same)
+      // Extract text content based on file type
       const fileType = await fileTypeFromFile(req.file.path);
       let fileContent = '';
 
-      if (fileType?.mime.startsWith('image/')) {
-        fileContent = await extractTextFromImage(req.file.path);
-      } else if (fileType?.mime === 'application/pdf') {
-        fileContent = await extractTextFromPDF(req.file.path);
-      } else {
-        fileContent = await fs.readFile(req.file.path, 'utf-8');
+      console.log("Processing file:", {
+        path: req.file.path,
+        type: fileType?.mime || req.file.mimetype
+      });
+
+      try {
+        if (fileType?.mime.startsWith('image/')) {
+          fileContent = await extractTextFromImage(req.file.path);
+        } else if (fileType?.mime === 'application/pdf') {
+          fileContent = await extractTextFromPDF(req.file.path);
+        } else {
+          fileContent = await fs.readFile(req.file.path, 'utf-8');
+        }
+
+        console.log("Content extracted successfully, length:", fileContent.length);
+      } catch (extractError) {
+        console.error("Content extraction error:", extractError);
+        throw new Error(`Failed to extract content: ${extractError.message}`);
       }
 
-      // Perform sentiment analysis on the extracted content
-      const sentimentAnalysis = await analyzeSentiment(fileContent);
+      // Perform sentiment analysis
+      let sentimentAnalysis;
+      try {
+        sentimentAnalysis = await analyzeSentiment(fileContent);
+        console.log("Sentiment analysis completed");
+      } catch (analysisError) {
+        console.error("Sentiment analysis error:", analysisError);
+        throw new Error(`Failed to analyze sentiment: ${analysisError.message}`);
+      }
 
-      // Save document with sentiment analysis
+      // Save document with extracted content and analysis
       const [doc] = await db.insert(documents)
         .values({
           title: req.file.originalname,
@@ -477,7 +500,14 @@ You can access current transfer pricing developments and news. When asked about 
       });
     } catch (error: any) {
       console.error("Upload error:", error);
-      res.status(500).send(error.message || "Failed to process upload");
+      // Clean up uploaded file in case of error
+      if (req.file?.path) {
+        fs.unlink(req.file.path).catch(console.error);
+      }
+      res.status(500).json({ 
+        error: error.message || "Failed to process upload",
+        details: error.toString()
+      });
     }
   });
 
@@ -894,7 +924,6 @@ Format your response as a JSON object with these exact fields:
 }`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
         model: "gpt-3.5-turbo",
         messages: [
           { role: "system", content: systemPrompt }

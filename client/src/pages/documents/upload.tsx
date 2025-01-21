@@ -29,7 +29,10 @@ export default function DocumentUpload() {
         body: formData,
       });
 
-      if (!response.ok) throw new Error('Upload failed');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Upload failed');
+      }
 
       const data = await response.json();
       setAnalysisResult(data.analysis);
@@ -37,11 +40,11 @@ export default function DocumentUpload() {
         title: "Upload Successful",
         description: "Document uploaded and analyzed successfully.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
       toast({
         title: "Upload Failed",
-        description: "Failed to upload document. Please try again.",
+        description: error.message || "Failed to upload document. Please try again.",
         variant: "destructive",
       });
     }
