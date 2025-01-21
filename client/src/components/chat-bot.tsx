@@ -88,7 +88,7 @@ export function ChatBot() {
   if (!isOpen) {
     return (
       <Button
-        className="fixed bottom-4 right-4 h-12 w-12 rounded-full p-0"
+        className="fixed bottom-4 right-4 h-12 w-12 rounded-full p-0 z-50"
         onClick={() => setIsOpen(true)}
       >
         <MessageCircle className="h-6 w-6" />
@@ -99,8 +99,8 @@ export function ChatBot() {
   return (
     <Card 
       className={cn(
-        "fixed bottom-4 right-4 shadow-lg transition-all duration-200",
-        isExpanded ? "w-[800px] h-[80vh]" : "w-[400px]"
+        "fixed bottom-4 right-4 shadow-lg transition-all duration-200 z-50",
+        isExpanded ? "w-[800px] h-[80vh] top-[10vh] bottom-auto" : "w-[400px]"
       )}
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
@@ -127,7 +127,7 @@ export function ChatBot() {
         </div>
       </CardHeader>
       <CardContent className="p-3">
-        <ScrollArea className={cn("pr-4", isExpanded ? "h-[calc(80vh-120px)]" : "h-[300px]")}>
+        <ScrollArea className={cn("pr-4", isExpanded ? "h-[calc(80vh-160px)]" : "h-[300px]")}>
           <div className="flex flex-col gap-3">
             {messages.map((message, index) => (
               <div

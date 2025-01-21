@@ -207,98 +207,6 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Separate endpoint for analysis
-  app.post("/api/notices/:id/analyze", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
-
-    try {
-      const noticeId = parseInt(req.params.id);
-      const [notice] = await db.select()
-        .from(auditNotices)
-        .where(eq(auditNotices.id, noticeId))
-        .limit(1);
-
-      if (!notice) {
-        return res.status(404).send("Notice not found");
-      }
-
-      if (notice.userId !== req.user.id) {
-        return res.status(403).send("Access denied");
-      }
-
-      const analysis = await analyzeText(notice.content);
-
-      const [savedAnalysis] = await db.insert(noticeAnalysis)
-        .values({
-          noticeId: notice.id,
-          summary: analysis.summary,
-          keyIssues: analysis.keyIssues,
-          suggestedResponses: analysis.suggestedResponses,
-          requiredDocuments: analysis.requiredDocuments,
-          riskAssessment: analysis.riskAssessment
-        })
-        .returning();
-
-      res.json(savedAnalysis);
-
-    } catch (error: any) {
-      console.error("Analysis error:", error);
-      res.status(500).json({ message: error.message });
-    }
-  });
-
-  app.get("/api/notices", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
-
-    try {
-      const notices = await db.select()
-        .from(auditNotices)
-        .where(eq(auditNotices.userId, req.user.id))
-        .orderBy(desc(auditNotices.createdAt));
-
-      res.json(notices);
-    } catch (error: any) {
-      console.error("Failed to fetch notices:", error);
-      res.status(500).send(error.message);
-    }
-  });
-
-  app.get("/api/notices/:id/analysis", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
-
-    try {
-      const [analysis] = await db.select()
-        .from(noticeAnalysis)
-        .where(eq(noticeAnalysis.noticeId, parseInt(req.params.id)))
-        .limit(1);
-
-      if (!analysis) {
-        return res.status(404).send("Analysis not found");
-      }
-
-      res.json(analysis);
-    } catch (error: any) {
-      console.error("Failed to fetch notice analysis:", error);
-      res.status(500).send(error.message);
-    }
-  });
-
-  app.get("/api/notices/:id/timeline", async (req, res) =>{
-    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
-
-    try {
-      const timeline = await db.select()
-        .from(noticeTimelines)
-        .where(eq(noticeTimelines.noticeId, parseInt(req.params.id)))
-        .orderBy(desc(noticeTimelines.dueDate));
-
-      res.json(timeline);
-    } catch (error: any) {
-      console.error("Failed to fetch notice timeline:", error);
-      res.status(500).send(error.message);
-    }
-  });
-
   // Add this to the existing /api/chat/upload endpoint, just before the chat endpoint
   app.post("/api/chat/upload", upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
@@ -309,15 +217,25 @@ export function registerRoutes(app: Express): Server {
       const fileType = await fileTypeFromFile(req.file.path);
       let fileContent = '';
 
+      console.log("Processing file:", {
+        path: req.file.path,
+        type: fileType?.mime || req.file.mimetype
+      });
+
       // Extract text based on file type
       if (fileType?.mime.startsWith('image/')) {
+        console.log("Processing image file...");
         fileContent = await extractTextFromImage(req.file.path);
       } else if (fileType?.mime === 'application/pdf') {
+        console.log("Processing PDF file...");
         fileContent = await extractTextFromPDF(req.file.path);
       } else {
         // For text files and other documents, read directly
+        console.log("Processing text/document file...");
         fileContent = await fs.readFile(req.file.path, 'utf-8');
       }
+
+      console.log("Content extracted, length:", fileContent.length);
 
       // Save document to database for future reference
       const [doc] = await db.insert(documents)
@@ -691,116 +609,6 @@ Always base your answers on the available company data and documents when possib
       .orderBy(desc(integrationLogs.createdAt));
 
     res.json(logs);
-  });
-
-  // Chat API endpoint
-  app.post("/api/chat", async (req, res) => {
-    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
-
-    try {
-      const { message } = req.body;
-
-      if (!message) {
-        return res.status(400).send("Message is required");
-      }
-
-      // Fetch relevant context data
-      const checks = await db.select().from(complianceChecks)
-        .where(eq(complianceChecks.userId, req.user.id));
-
-      const companies = await db.select().from(comparableCompanies)
-        .where(eq(comparableCompanies.userId, req.user.id));
-
-      const benchmarks = await db.select().from(benchmarkingAnalysis)
-        .where(eq(benchmarkingAnalysis.userId, req.user.id));
-
-      const notices = await db.select().from(auditNotices)
-        .where(eq(auditNotices.userId, req.user.id))
-        .limit(5);
-
-      // Fetch recent documents for context
-      const recentDocs = await db.select()
-        .from(documents)
-        .where(eq(documents.userId, req.user.id))
-        .orderBy(desc(documents.createdAt))
-        .limit(3);
-
-      // Prepare context for the AI
-      const context = {
-        companyData: {
-          comparableCompanies: companies.map(c => ({
-            name: c.name,
-            industry: c.industry,
-            region: c.region,
-            financialData: c.financialData
-          })),
-          benchmarkingAnalysis: benchmarks.map(b => ({
-            financialRatios: b.financialRatios,
-            quartileRanges: b.quartileRanges
-          }))
-        },
-        complianceStatus: checks.map(c => ({
-          jurisdiction: c.jurisdiction,
-          requirements: c.requirements,
-          status: c.status
-        })),
-        recentNotices: notices.map(n => ({
-          title: n.title,
-          noticeType: n.noticeType,
-          jurisdiction: n.jurisdiction,
-          receivedDate: n.receivedDate
-        })),
-        recentDocuments: recentDocs.map(d => ({
-          title: d.title,
-          content: d.content,
-          status: d.status
-        }))
-      };
-
-      const systemPrompt = `You are an expert transfer pricing and tax compliance assistant with access to company-specific data and documents. Help users with questions about their data, documents, transfer pricing, and compliance requirements.
-
-Available Company Data:
-${JSON.stringify(context, null, 2)}
-
-Focus areas:
-1. Document analysis and insights
-2. Company-specific financial analysis and benchmarking
-3. OECD Transfer Pricing Guidelines
-4. Local country regulations
-5. Documentation requirements
-6. Risk assessment
-7. Compliance deadlines
-8. Audit notices and responses
-9. International tax treaties
-10. Advance Pricing Agreements (APAs)
-
-When providing advice:
-1. Reference specific documents and company data when relevant
-2. Compare company metrics with benchmarks
-3. Cite specific guidelines or regulations
-4. Suggest relevant documentation requirements
-5. Note potential risk factors
-6. Recommend compliance best practices
-
-Always base your answers on the available company data and documents when possible.`;
-
-      const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: message }
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
-      });
-
-      const aiResponse = response.choices[0]?.message?.content || "I apologize, I couldn't process your request.";
-      res.json({ message: aiResponse });
-
-    } catch (error: any) {
-      console.error("Chat API Error:", error);
-      res.status(500).send(error.message || "Failed to process chat message");
-    }
   });
 
   // Collaboration API Routes
