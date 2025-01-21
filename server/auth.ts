@@ -47,13 +47,31 @@ declare global {
 
 export async function createInitialAdmin() {
   try {
-    // Delete existing admin if any
-    await db.delete(users).where(eq(users.username, 'admin'));
+    // Check if admin exists
+    const [existingAdmin] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, 'admin'))
+      .limit(1);
 
-    // Create fresh admin user
+    // Update the admin's password if admin exists
+    if (existingAdmin) {
+      console.log("Updating admin password...");
+      const hashedPassword = await crypto.hash('admin123');
+      const [updatedAdmin] = await db
+        .update(users)
+        .set({ password: hashedPassword })
+        .where(eq(users.username, 'admin'))
+        .returning();
+      console.log("Admin password updated successfully");
+      return updatedAdmin;
+    }
+
+    // Create new admin if doesn't exist
     console.log("Creating admin user...");
     const hashedPassword = await crypto.hash('admin123');
-    const [newAdmin] = await db.insert(users)
+    const [newAdmin] = await db
+      .insert(users)
       .values({
         username: 'admin',
         password: hashedPassword,
@@ -63,7 +81,7 @@ export async function createInitialAdmin() {
     return newAdmin;
 
   } catch (error) {
-    console.error("Error creating admin user:", error);
+    console.error("Error managing admin user:", error);
     throw error;
   }
 }

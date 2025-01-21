@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, Search } from "lucide-react";
+import { Upload, Search, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -29,16 +29,16 @@ type Analysis = {
   };
 };
 
-export default function NoticeManagementPage() {
+export default function NoticeManagement() {
   const { toast } = useToast();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [selectedNotice, setSelectedNotice] = useState<Notice | null>(null);
 
-  const { data: notices = [] } = useQuery<Notice[]>({
+  const { data: notices = [], isLoading: isLoadingNotices } = useQuery<Notice[]>({
     queryKey: ['/api/notices'],
   });
 
-  const { data: analysis } = useQuery<Analysis>({
+  const { data: analysis, isLoading: isLoadingAnalysis } = useQuery<Analysis>({
     queryKey: ['/api/notices', selectedNotice?.id, 'analysis'],
     enabled: !!selectedNotice,
   });
@@ -123,6 +123,14 @@ export default function NoticeManagementPage() {
     }
   };
 
+  if (isLoadingNotices) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -149,7 +157,11 @@ export default function NoticeManagementPage() {
                 disabled={uploadMutation.isPending}
               >
                 <div className="flex flex-col items-center gap-2">
-                  <Upload className="h-8 w-8" />
+                  {uploadMutation.isPending ? (
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  ) : (
+                    <Upload className="h-8 w-8" />
+                  )}
                   <div className="text-lg font-semibold">
                     {uploadMutation.isPending ? "Uploading..." : "Drop notice here or click to upload"}
                   </div>
@@ -212,7 +224,11 @@ export default function NoticeManagementPage() {
                 onClick={handleAnalyze}
                 disabled={isAnalyzing || analyzeMutation.isPending}
               >
-                <Search className="h-4 w-4 mr-2" />
+                {isAnalyzing || analyzeMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4 mr-2" />
+                )}
                 {isAnalyzing ? "Analyzing..." : "Analyze Content"}
               </Button>
             </div>
@@ -229,51 +245,57 @@ export default function NoticeManagementPage() {
         <Card>
           <CardContent className="p-6">
             <h2 className="text-xl font-semibold mb-4">AI-Powered Analysis</h2>
-            <div className="space-y-6">
-              <div>
-                <h3 className="font-medium mb-2">Summary</h3>
-                <p className="text-muted-foreground">{analysis.summary}</p>
+            {isLoadingAnalysis ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="font-medium mb-2">Summary</h3>
+                  <p className="text-muted-foreground">{analysis.summary}</p>
+                </div>
 
-              <div>
-                <h3 className="font-medium mb-2">Key Issues</h3>
-                <ul className="list-disc list-inside space-y-1">
-                  {analysis.keyIssues.map((issue, index) => (
-                    <li key={index} className="text-muted-foreground">{issue}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-medium mb-2">Suggested Responses</h3>
-                <ul className="list-disc list-inside space-y-1">
-                  {analysis.suggestedResponses.map((response, index) => (
-                    <li key={index} className="text-muted-foreground">{response}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-medium mb-2">Required Documentation</h3>
-                <ul className="list-disc list-inside space-y-1">
-                  {analysis.requiredDocuments.map((doc, index) => (
-                    <li key={index} className="text-muted-foreground">{doc}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-medium mb-2">Risk Assessment</h3>
-                <div className="bg-accent/50 p-4 rounded-lg">
-                  <div className="font-medium text-sm">Risk Level: {analysis.riskAssessment.level}</div>
-                  <ul className="list-disc list-inside space-y-1 mt-2">
-                    {analysis.riskAssessment.factors.map((factor, index) => (
-                      <li key={index} className="text-muted-foreground text-sm">{factor}</li>
+                <div>
+                  <h3 className="font-medium mb-2">Key Issues</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {analysis.keyIssues.map((issue, index) => (
+                      <li key={index} className="text-muted-foreground">{issue}</li>
                     ))}
                   </ul>
                 </div>
+
+                <div>
+                  <h3 className="font-medium mb-2">Suggested Responses</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {analysis.suggestedResponses.map((response, index) => (
+                      <li key={index} className="text-muted-foreground">{response}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="font-medium mb-2">Required Documentation</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {analysis.requiredDocuments.map((doc, index) => (
+                      <li key={index} className="text-muted-foreground">{doc}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="font-medium mb-2">Risk Assessment</h3>
+                  <div className="bg-accent/50 p-4 rounded-lg">
+                    <div className="font-medium text-sm">Risk Level: {analysis.riskAssessment.level}</div>
+                    <ul className="list-disc list-inside space-y-1 mt-2">
+                      {analysis.riskAssessment.factors.map((factor, index) => (
+                        <li key={index} className="text-muted-foreground text-sm">{factor}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </CardContent>
         </Card>
       )}
