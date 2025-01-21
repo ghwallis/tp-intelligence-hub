@@ -8,6 +8,7 @@ import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { ThemeProvider } from "@/components/theme-provider";
+import { ChatBot } from "@/components/chat-bot";
 
 // Import all pages
 import Dashboard from "@/pages/dashboard";
@@ -100,6 +101,7 @@ function Router() {
           </div>
         </main>
       </div>
+      <ChatBot />
     </div>
   );
 }

@@ -608,16 +608,72 @@ export function registerRoutes(app: Express): Server {
         return res.status(400).send("Message is required");
       }
 
-      const systemPrompt = `You are an expert transfer pricing assistant. Help users with transfer pricing related questions, compliance requirements, and risk assessment. Your responses should be professional and based on best practices in transfer pricing.
+      // Fetch relevant context data
+      const checks = await db.select().from(complianceChecks)
+        .where(eq(complianceChecks.userId, req.user.id));
 
-Current context: The user is working with a Transfer Pricing Intelligence Platform that includes:
-- Document management
-- Risk assessment tools
-- Compliance tracking
-- Benchmarking analysis
-- Data source integration
+      const companies = await db.select().from(comparableCompanies)
+        .where(eq(comparableCompanies.userId, req.user.id));
 
-Provide concise, practical advice based on this context.`;
+      const benchmarks = await db.select().from(benchmarkingAnalysis)
+        .where(eq(benchmarkingAnalysis.userId, req.user.id));
+
+      const notices = await db.select().from(auditNotices)
+        .where(eq(auditNotices.userId, req.user.id))
+        .limit(5);
+
+      // Prepare context for the AI
+      const context = {
+        companyData: {
+          comparableCompanies: companies.map(c => ({
+            name: c.name,
+            industry: c.industry,
+            region: c.region,
+            financialData: c.financialData
+          })),
+          benchmarkingAnalysis: benchmarks.map(b => ({
+            financialRatios: b.financialRatios,
+            quartileRanges: b.quartileRanges
+          }))
+        },
+        complianceStatus: checks.map(c => ({
+          jurisdiction: c.jurisdiction,
+          requirements: c.requirements,
+          status: c.status
+        })),
+        recentNotices: notices.map(n => ({
+          title: n.title,
+          noticeType: n.noticeType,
+          jurisdiction: n.jurisdiction,
+          receivedDate: n.receivedDate
+        }))
+      };
+
+      const systemPrompt = `You are an expert transfer pricing and tax compliance assistant with access to company-specific data. Help users with questions about their data, transfer pricing, and compliance requirements.
+
+Available Company Data:
+${JSON.stringify(context, null, 2)}
+
+Focus areas:
+1. Company-specific financial analysis and benchmarking
+2. OECD Transfer Pricing Guidelines
+3. Local country regulations
+4. Documentation requirements
+5. Risk assessment
+6. Compliance deadlines
+7. Audit notices and responses
+8. International tax treaties
+9. Advance Pricing Agreements (APAs)
+
+When providing advice:
+1. Reference specific company data when relevant
+2. Compare company metrics with benchmarks
+3. Cite specific guidelines or regulations
+4. Suggest relevant documentation requirements
+5. Note potential risk factors
+6. Recommend compliance best practices
+
+Always base your answers on the available company data when possible.`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
