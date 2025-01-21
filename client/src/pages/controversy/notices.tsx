@@ -4,8 +4,19 @@ import { useState } from "react";
 import { NoticeAnalysis } from "@/components/notice-analysis";
 import { useToast } from "@/hooks/use-toast";
 
+interface NoticeAnalysisResult {
+  summary: string;
+  keyIssues: string[];
+  suggestedResponses: string[];
+  requiredDocuments: string[];
+  riskAssessment: {
+    level: "low" | "medium" | "high";
+    factors: string[];
+  };
+}
+
 export default function NoticeManagement() {
-  const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState<NoticeAnalysisResult | null>(null);
   const { toast } = useToast();
 
   const handleFileUpload = async (event: React.DragEvent<HTMLDivElement> | React.ChangeEvent<HTMLInputElement>) => {
@@ -78,7 +89,7 @@ export default function NoticeManagement() {
               const input = document.createElement('input');
               input.type = 'file';
               input.accept = '.pdf,.doc,.docx,.txt';
-              input.onchange = handleFileUpload;
+              input.addEventListener('change', handleFileUpload);
               input.click();
             }}
           >
