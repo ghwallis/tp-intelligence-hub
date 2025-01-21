@@ -24,6 +24,9 @@ import {
   BookOpen,
   HandshakeIcon,
   AlertOctagon,
+  Calendar,
+  FileClock,
+  ScrollText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/hooks/use-user";
@@ -48,9 +51,29 @@ const mainNavItems = [
     icon: AlertTriangle,
     items: [
       {
+        title: "Notice Management",
+        href: "/controversy/notices",
+        icon: ScrollText,
+      },
+      {
         title: "Audit Management",
         href: "/controversy/audit",
         icon: AlertTriangle,
+      },
+      {
+        title: "Documentation",
+        href: "/controversy/documentation",
+        icon: FileText,
+      },
+      {
+        title: "Timeline Tracker",
+        href: "/controversy/timeline",
+        icon: Calendar,
+      },
+      {
+        title: "Dispute Resolution",
+        href: "/controversy/dispute",
+        icon: HandshakeIcon,
       },
     ],
   },
