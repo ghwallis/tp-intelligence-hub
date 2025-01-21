@@ -8,16 +8,16 @@ export default function PillarTwo() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const readinessStatus = {
-    iir: "completed", // Income Inclusion Rule
-    utpr: "in-progress", // Undertaxed Payment Rule
-    sttr: "pending", // Subject to Tax Rule
+    iir: "completed" as const,
+    utpr: "in-progress" as const,
+    sttr: "pending" as const,
   };
 
   const checklistItems = [
-    { label: "Data collection framework established", status: "completed" },
-    { label: "ETR calculation methodology defined", status: "completed" },
-    { label: "Top-up tax calculation process", status: "in-progress" },
-    { label: "STTR implementation planning", status: "pending" },
+    { label: "Data collection framework established", status: "completed" as const },
+    { label: "ETR calculation methodology defined", status: "completed" as const },
+    { label: "Top-up tax calculation process", status: "in-progress" as const },
+    { label: "STTR implementation planning", status: "pending" as const },
   ];
 
   return (
@@ -47,7 +47,7 @@ export default function PillarTwo() {
               <p className="text-muted-foreground">
                 Current status of your organization's Pillar Two implementation
               </p>
-              
+
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between items-center mb-2">

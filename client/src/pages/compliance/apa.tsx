@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 
 export default function APAManagement() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -42,11 +41,11 @@ export default function APAManagement() {
                     <CardContent>
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold">3</span>
-                        <StatusBadge status="completed" />
+                        <StatusBadge status="active" />
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg">Pending Renewals</CardTitle>
@@ -54,11 +53,11 @@ export default function APAManagement() {
                     <CardContent>
                       <div className="flex items-center justify-between">
                         <span className="text-2xl font-bold">2</span>
-                        <StatusBadge status="upcoming" />
+                        <StatusBadge status="pending" />
                       </div>
                     </CardContent>
                   </Card>
-                  
+
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-lg">New Applications</CardTitle>
@@ -89,19 +88,19 @@ export default function APAManagement() {
                       jurisdiction: "Netherlands",
                       type: "Bilateral",
                       period: "2022-2026",
-                      status: "active"
+                      status: "active" as const
                     },
                     {
                       jurisdiction: "Singapore",
                       type: "Unilateral",
                       period: "2023-2027",
-                      status: "active"
+                      status: "active" as const
                     },
                     {
                       jurisdiction: "UK",
                       type: "Bilateral",
                       period: "2021-2025",
-                      status: "active"
+                      status: "active" as const
                     }
                   ].map((apa, index) => (
                     <div key={index} className="flex items-center justify-between p-4 border rounded">
@@ -111,7 +110,7 @@ export default function APAManagement() {
                           {apa.type} APA | Period: {apa.period}
                         </p>
                       </div>
-                      <StatusBadge status="completed" />
+                      <StatusBadge status={apa.status} />
                     </div>
                   ))}
                 </div>
@@ -132,12 +131,12 @@ export default function APAManagement() {
                     {
                       jurisdiction: "UK",
                       deadline: "Dec 2024",
-                      status: "upcoming"
+                      status: "pending" as const
                     },
                     {
                       jurisdiction: "Netherlands",
                       deadline: "Jun 2025",
-                      status: "upcoming"
+                      status: "pending" as const
                     }
                   ].map((renewal, index) => (
                     <div key={index} className="flex items-center justify-between p-4 border rounded">

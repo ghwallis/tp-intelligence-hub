@@ -14,7 +14,8 @@ interface StatusBadgeProps {
     | "in-progress"
     | "pending"
     | "approved"
-    | "rejected";
+    | "rejected"
+    | "active"; // Added for APA status
   className?: string;
 }
 
@@ -22,25 +23,26 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   // Map statuses to semantic states
   const statusClasses = {
     // Success states - Green
-    low: "status-success",
-    compliant: "status-success",
-    completed: "status-success",
-    approved: "status-success",
+    low: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
+    compliant: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
+    completed: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
+    approved: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
+    active: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100",
 
     // Warning states - Yellow
-    medium: "status-warning",
-    upcoming: "status-warning",
-    "in-progress": "status-warning",
-    pending: "status-warning",
+    medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
+    upcoming: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
+    "in-progress": "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
+    pending: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
 
     // Danger states - Red
-    high: "status-danger",
-    "action-needed": "status-danger",
-    "past-due": "status-danger",
-    rejected: "status-danger",
+    high: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
+    "action-needed": "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
+    "past-due": "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
+    rejected: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
 
     // Neutral state - Grey
-    draft: "status-muted",
+    draft: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-100",
   };
 
   const label = status.split("-").map(word => 
@@ -48,7 +50,11 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   ).join(" ");
 
   return (
-    <span className={cn("status-badge", statusClasses[status], className)}>
+    <span className={cn(
+      "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
+      statusClasses[status],
+      className
+    )}>
       {label}
     </span>
   );
