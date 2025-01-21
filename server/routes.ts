@@ -283,80 +283,176 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  app.delete("/api/notices/:id", async (req, res) => {
+  app.get("/api/notices/:id/timeline", async (req, res) =>{
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
 
     try {
-      const noticeId = parseInt(req.params.id);
-      const [notice] = await db.select()
-        .from(auditNotices)
-        .where(eq(auditNotices.id, noticeId))
-        .limit(1);
+      const timeline = await db.select()
+        .from(noticeTimelines)
+        .where(eq(noticeTimelines.noticeId, parseInt(req.params.id)))
+        .orderBy(desc(noticeTimelines.dueDate));
 
-      if (!notice) {
-        return res.status(404).send("Notice not found");
-      }
-
-      if (notice.userId !== req.user.id) {
-        return res.status(403).send("Access denied");
-      }
-
-      // Delete the physical file if it exists
-      if (notice.metadata?.filePath) {
-        try {
-          await unlink(notice.metadata.filePath);
-        } catch (error) {
-          console.error("Failed to delete file:", error);
-          // Continue with deletion even if file removal fails
-        }
-      }
-
-      // Delete the notice from the database
-      await db.delete(auditNotices)
-        .where(eq(auditNotices.id, noticeId));
-
-      // Also delete associated analysis
-      await db.delete(noticeAnalysis)
-        .where(eq(noticeAnalysis.noticeId, noticeId));
-
-      res.json({ message: "Notice deleted successfully" });
+      res.json(timeline);
     } catch (error: any) {
-      console.error("Delete notice error:", error);
+      console.error("Failed to fetch notice timeline:", error);
       res.status(500).send(error.message);
     }
   });
 
-  app.get("/api/notices/:id/download", async (req, res) => {
+  // Add this to the existing /api/chat/upload endpoint, just before the chat endpoint
+  app.post("/api/chat/upload", upload.single('file'), async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+    if (!req.file) return res.status(400).send("No file uploaded");
+
+    try {
+      // Detect file type
+      const fileType = await fileTypeFromFile(req.file.path);
+      let fileContent = '';
+
+      // Extract text based on file type
+      if (fileType?.mime.startsWith('image/')) {
+        fileContent = await extractTextFromImage(req.file.path);
+      } else if (fileType?.mime === 'application/pdf') {
+        fileContent = await extractTextFromPDF(req.file.path);
+      } else {
+        // For text files and other documents, read directly
+        fileContent = await fs.readFile(req.file.path, 'utf-8');
+      }
+
+      // Save document to database for future reference
+      const [doc] = await db.insert(documents)
+        .values({
+          title: req.file.originalname,
+          content: fileContent,
+          userId: req.user.id,
+          status: 'processed',
+          metadata: {
+            size: req.file.size,
+            mimetype: fileType?.mime || req.file.mimetype,
+            originalName: req.file.originalname,
+            filePath: req.file.path
+          }
+        })
+        .returning();
+
+      res.json({
+        message: "Document processed successfully",
+        documentId: doc.id
+      });
+
+    } catch (error: any) {
+      console.error("Document upload error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Modify the existing chat endpoint to include document context
+  app.post("/api/chat", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
 
     try {
-      const noticeId = parseInt(req.params.id);
-      const [notice] = await db.select()
-        .from(auditNotices)
-        .where(eq(auditNotices.id, noticeId))
-        .limit(1);
+      const { message } = req.body;
 
-      if (!notice) {
-        return res.status(404).send("Notice not found");
+      if (!message) {
+        return res.status(400).send("Message is required");
       }
 
-      if (notice.userId !== req.user.id) {
-        return res.status(403).send("Access denied");
-      }
+      // Fetch relevant context data
+      const checks = await db.select().from(complianceChecks)
+        .where(eq(complianceChecks.userId, req.user.id));
 
-      const filePath = notice.metadata?.filePath;
-      if (!filePath || typeof filePath !== 'string') {
-        return res.status(404).send("File not found");
-      }
+      const companies = await db.select().from(comparableCompanies)
+        .where(eq(comparableCompanies.userId, req.user.id));
 
-      const metadata = notice.metadata as Record<string, any>;
-      res.setHeader('Content-Type', metadata?.mimetype || 'application/octet-stream');
-      res.setHeader('Content-Disposition', `attachment; filename="${metadata?.originalName || `notice-${notice.id}`}"`);
+      const benchmarks = await db.select().from(benchmarkingAnalysis)
+        .where(eq(benchmarkingAnalysis.userId, req.user.id));
 
-      res.sendFile(path.resolve(filePath));
+      const notices = await db.select().from(auditNotices)
+        .where(eq(auditNotices.userId, req.user.id))
+        .limit(5);
+
+      // Fetch recent documents for context
+      const recentDocs = await db.select()
+        .from(documents)
+        .where(eq(documents.userId, req.user.id))
+        .orderBy(desc(documents.createdAt))
+        .limit(3);
+
+      // Prepare context for the AI
+      const context = {
+        companyData: {
+          comparableCompanies: companies.map(c => ({
+            name: c.name,
+            industry: c.industry,
+            region: c.region,
+            financialData: c.financialData
+          })),
+          benchmarkingAnalysis: benchmarks.map(b => ({
+            financialRatios: b.financialRatios,
+            quartileRanges: b.quartileRanges
+          }))
+        },
+        complianceStatus: checks.map(c => ({
+          jurisdiction: c.jurisdiction,
+          requirements: c.requirements,
+          status: c.status
+        })),
+        recentNotices: notices.map(n => ({
+          title: n.title,
+          noticeType: n.noticeType,
+          jurisdiction: n.jurisdiction,
+          receivedDate: n.receivedDate
+        })),
+        recentDocuments: recentDocs.map(d => ({
+          title: d.title,
+          content: d.content,
+          status: d.status
+        }))
+      };
+
+      const systemPrompt = `You are an expert transfer pricing and tax compliance assistant with access to company-specific data and documents. Help users with questions about their data, documents, transfer pricing, and compliance requirements.
+
+Available Company Data:
+${JSON.stringify(context, null, 2)}
+
+Focus areas:
+1. Document analysis and insights
+2. Company-specific financial analysis and benchmarking
+3. OECD Transfer Pricing Guidelines
+4. Local country regulations
+5. Documentation requirements
+6. Risk assessment
+7. Compliance deadlines
+8. Audit notices and responses
+9. International tax treaties
+10. Advance Pricing Agreements (APAs)
+
+When providing advice:
+1. Reference specific documents and company data when relevant
+2. Compare company metrics with benchmarks
+3. Cite specific guidelines or regulations
+4. Suggest relevant documentation requirements
+5. Note potential risk factors
+6. Recommend compliance best practices
+
+Always base your answers on the available company data and documents when possible.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: message }
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+      });
+
+      const aiResponse = response.choices[0]?.message?.content || "I apologize, I couldn't process your request.";
+      res.json({ message: aiResponse });
+
     } catch (error: any) {
-      console.error("Download error:", error);
-      res.status(500).json({ message: error.message });
+      console.error("Chat API Error:", error);
+      res.status(500).send(error.message || "Failed to process chat message");
     }
   });
 
@@ -622,6 +718,13 @@ export function registerRoutes(app: Express): Server {
         .where(eq(auditNotices.userId, req.user.id))
         .limit(5);
 
+      // Fetch recent documents for context
+      const recentDocs = await db.select()
+        .from(documents)
+        .where(eq(documents.userId, req.user.id))
+        .orderBy(desc(documents.createdAt))
+        .limit(3);
+
       // Prepare context for the AI
       const context = {
         companyData: {
@@ -646,34 +749,40 @@ export function registerRoutes(app: Express): Server {
           noticeType: n.noticeType,
           jurisdiction: n.jurisdiction,
           receivedDate: n.receivedDate
+        })),
+        recentDocuments: recentDocs.map(d => ({
+          title: d.title,
+          content: d.content,
+          status: d.status
         }))
       };
 
-      const systemPrompt = `You are an expert transfer pricing and tax compliance assistant with access to company-specific data. Help users with questions about their data, transfer pricing, and compliance requirements.
+      const systemPrompt = `You are an expert transfer pricing and tax compliance assistant with access to company-specific data and documents. Help users with questions about their data, documents, transfer pricing, and compliance requirements.
 
 Available Company Data:
 ${JSON.stringify(context, null, 2)}
 
 Focus areas:
-1. Company-specific financial analysis and benchmarking
-2. OECD Transfer Pricing Guidelines
-3. Local country regulations
-4. Documentation requirements
-5. Risk assessment
-6. Compliance deadlines
-7. Audit notices and responses
-8. International tax treaties
-9. Advance Pricing Agreements (APAs)
+1. Document analysis and insights
+2. Company-specific financial analysis and benchmarking
+3. OECD Transfer Pricing Guidelines
+4. Local country regulations
+5. Documentation requirements
+6. Risk assessment
+7. Compliance deadlines
+8. Audit notices and responses
+9. International tax treaties
+10. Advance Pricing Agreements (APAs)
 
 When providing advice:
-1. Reference specific company data when relevant
+1. Reference specific documents and company data when relevant
 2. Compare company metrics with benchmarks
 3. Cite specific guidelines or regulations
 4. Suggest relevant documentation requirements
 5. Note potential risk factors
 6. Recommend compliance best practices
 
-Always base your answers on the available company data when possible.`;
+Always base your answers on the available company data and documents when possible.`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
