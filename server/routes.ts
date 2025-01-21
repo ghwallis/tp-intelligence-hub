@@ -67,14 +67,14 @@ async function extractTextFromImage(filePath: string): Promise<string> {
   return text;
 }
 
-// Helper function to extract text from PDF
+// Helper function to extract text from PDF using a more compatible approach
 async function extractTextFromPDF(filePath: string): Promise<string> {
   try {
     const data = await fs.readFile(filePath);
     const loadingTask = pdfjsLib.getDocument({
       data,
-      useSystemFonts: true,
-      disableFontFace: true,
+      useWorker: false, // Disable worker to avoid compatibility issues
+      standardFontDataUrl: `https://unpkg.com/pdfjs-dist@4.0.269/standard_fonts/`,
     });
     const pdf = await loadingTask.promise;
     let text = '';
@@ -264,7 +264,7 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
-  // Modify the existing chat endpoint to include document context
+  // Updated chat endpoint to include news and analysis capabilities
   app.post("/api/chat", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
 
@@ -333,27 +333,33 @@ export function registerRoutes(app: Express): Server {
 Available Company Data:
 ${JSON.stringify(context, null, 2)}
 
-Focus areas:
-1. Document analysis and insights
-2. Company-specific financial analysis and benchmarking
-3. OECD Transfer Pricing Guidelines
-4. Local country regulations
-5. Documentation requirements
-6. Risk assessment
-7. Compliance deadlines
-8. Audit notices and responses
-9. International tax treaties
-10. Advance Pricing Agreements (APAs)
+Focus areas and capabilities:
+1. Keep up with latest transfer pricing developments globally
+2. Provide news updates and impact analysis
+3. Document analysis and insights
+4. Company-specific financial analysis and benchmarking
+5. OECD Transfer Pricing Guidelines interpretation
+6. Local country regulations
+7. Documentation requirements
+8. Risk assessment
+9. Compliance deadlines
+10. Audit notices and responses
 
 When providing advice:
-1. Reference specific documents and company data when relevant
-2. Compare company metrics with benchmarks
-3. Cite specific guidelines or regulations
-4. Suggest relevant documentation requirements
-5. Note potential risk factors
-6. Recommend compliance best practices
+1. For general questions about news or developments:
+   - Provide latest relevant transfer pricing updates
+   - Analyze potential impacts on businesses
+   - Reference official sources when possible
+2. For company-specific questions:
+   - Reference available documents and data
+   - Compare metrics with benchmarks
+   - Cite specific guidelines or regulations
+3. Always:
+   - Suggest relevant documentation requirements
+   - Note potential risk factors
+   - Recommend compliance best practices
 
-Always base your answers on the available company data and documents when possible.`;
+You can access current transfer pricing developments and news. When asked about news or updates, provide relevant information about recent developments in transfer pricing, such as OECD announcements, country regulations, or significant cases. Then, analyze how these developments might impact transfer pricing practices.`;
 
       const response = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
@@ -361,7 +367,7 @@ Always base your answers on the available company data and documents when possib
           { role: "system", content: systemPrompt },
           { role: "user", content: message }
         ],
-        max_tokens: 500,
+        max_tokens: 1000,
         temperature: 0.7,
       });
 
