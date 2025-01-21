@@ -7,8 +7,27 @@ import { Loader2 } from "lucide-react";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 import { SidebarNav } from "@/components/sidebar-nav";
-import NoticeManagement from "@/pages/controversy/notices";
 import { ThemeProvider } from "@/components/theme-provider";
+
+// Import all pages
+import Dashboard from "@/pages/dashboard";
+import Documentation from "@/pages/documentation";
+import Compliance from "@/pages/compliance";
+import Controversy from "@/pages/controversy";
+import NoticeManagement from "@/pages/controversy/notices";
+import Analytics from "@/pages/analytics";
+import AIInsights from "@/pages/ai-insights";
+import Benchmarking from "@/pages/benchmarking";
+import RiskAssessment from "@/pages/risk-assessment";
+import Integrations from "@/pages/integrations";
+import Settings from "@/pages/settings";
+import Team from "@/pages/team";
+import Templates from "@/pages/templates";
+import Documents from "@/pages/documents";
+import Collaboration from "@/pages/collaboration";
+import Deadlines from "@/pages/deadlines";
+import VersionControl from "@/pages/version-control";
+import Workflow from "@/pages/workflow";
 
 function Router() {
   const { user, isLoading } = useUser();
@@ -34,7 +53,24 @@ function Router() {
         <main className="h-screen overflow-y-auto">
           <div className="container py-6">
             <Switch>
+              <Route path="/" component={Dashboard} />
+              <Route path="/documentation" component={Documentation} />
+              <Route path="/compliance" component={Compliance} />
+              <Route path="/controversy" component={Controversy} />
               <Route path="/controversy/notices" component={NoticeManagement} />
+              <Route path="/analytics" component={Analytics} />
+              <Route path="/ai-insights" component={AIInsights} />
+              <Route path="/benchmarking" component={Benchmarking} />
+              <Route path="/risk-assessment" component={RiskAssessment} />
+              <Route path="/integrations" component={Integrations} />
+              <Route path="/settings" component={Settings} />
+              <Route path="/team" component={Team} />
+              <Route path="/templates" component={Templates} />
+              <Route path="/documents" component={Documents} />
+              <Route path="/collaboration" component={Collaboration} />
+              <Route path="/deadlines" component={Deadlines} />
+              <Route path="/version-control" component={VersionControl} />
+              <Route path="/workflow" component={Workflow} />
               <Route component={NotFound} />
             </Switch>
           </div>
