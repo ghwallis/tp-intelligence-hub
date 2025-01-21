@@ -70,13 +70,15 @@ async function extractTextFromImage(filePath: string): Promise<string> {
 // Helper function to extract text from PDF
 async function extractTextFromPDF(filePath: string): Promise<string> {
   const data = await fs.readFile(filePath);
-  const pdf = await pdfjsLib.getDocument({ data }).promise;
+  const loadingTask = pdfjsLib.getDocument(new Uint8Array(data));
+  const pdf = await loadingTask.promise;
   let text = '';
 
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    text += content.items.map((item: any) => item.str).join(' ') + '\n';
+    const items = content.items as { str: string }[];
+    text += items.map(item => item.str).join(' ') + '\n';
   }
 
   return text;
@@ -697,8 +699,7 @@ Format your response as a JSON object with these exact fields:
     }
   });
 
-  // Notice Management Routes (Updated) - This section is now replaced with the updated code from the edited snippet.
-
+  // Notice Management Routes (Updated)
   app.get("/api/notices", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
 
