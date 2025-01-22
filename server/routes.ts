@@ -52,7 +52,6 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-
 // Helper function to extract text from images
 async function extractTextFromImage(filePath: string): Promise<string> {
   const worker = await createWorker();
