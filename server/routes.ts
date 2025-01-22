@@ -103,6 +103,61 @@ Format your response as a JSON object with these exact fields:
   }
 }
 
+// Function to analyze document structure for audit notices
+async function analyzeDocumentStructure(text: string): Promise<{
+  documentType: string;
+  taxAuthority?: string;
+  targetEntities?: string[];
+  auditAreas?: string[];
+  informationRequests?: string[];
+  suggestedResponses?: string[];
+  dataSourceRecommendations?: string[];
+  keyDates?: { description: string; date: string; }[];
+  additionalNotes?: string;
+}> {
+  try {
+    // Note: gpt-4o is the latest model as of May 13, 2024
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert in transfer pricing and tax documentation analysis. 
+Analyze the document and extract structured information about its contents.
+If it's an audit notice, focus on identifying:
+1. The tax authority issuing the notice
+2. Target entities under audit
+3. Areas being audited
+4. Information being requested
+5. Key compliance dates
+6. Suggested responses
+7. Recommended data sources for response
+
+Format your response as a JSON object with these fields:
+{
+  "documentType": "audit_notice" | "other",
+  "taxAuthority": "string",
+  "targetEntities": string[],
+  "auditAreas": string[],
+  "informationRequests": string[],
+  "keyDates": [{ "description": string, "date": string }],
+  "suggestedResponses": string[],
+  "dataSourceRecommendations": string[],
+  "additionalNotes": string
+}`
+        },
+        { role: "user", content: text }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(response.choices[0].message.content);
+  } catch (error) {
+    console.error("Document structure analysis error:", error);
+    throw new Error("Failed to analyze document structure");
+  }
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -143,7 +198,7 @@ const openai = new OpenAI({
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
-  // Document upload endpoint with sentiment analysis
+  // Document upload endpoint with sentiment and structure analysis
   app.post("/api/documents/upload", upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
     if (!req.file) return res.status(400).send("No file uploaded");
@@ -180,12 +235,17 @@ export function registerRoutes(app: Express): Server {
       }
 
       let sentimentAnalysis;
+      let documentStructure;
       try {
-        sentimentAnalysis = await analyzeSentiment(fileContent);
-        console.log("Sentiment analysis completed");
+        // Run both analyses in parallel
+        [sentimentAnalysis, documentStructure] = await Promise.all([
+          analyzeSentiment(fileContent),
+          analyzeDocumentStructure(fileContent)
+        ]);
+        console.log("Document analysis completed");
       } catch (analysisError: any) {
-        console.error("Sentiment analysis error:", analysisError);
-        throw new Error(`Failed to analyze sentiment: ${analysisError.message}`);
+        console.error("Analysis error:", analysisError);
+        throw new Error(`Failed to analyze document: ${analysisError.message}`);
       }
 
       // Store the document and analysis in the database
@@ -200,14 +260,18 @@ export function registerRoutes(app: Express): Server {
             mimetype: fileType?.mime || req.file.mimetype,
             originalName: req.file.originalname,
             filePath: req.file.path,
-            sentimentAnalysis
+            sentimentAnalysis,
+            documentStructure
           }
         })
         .returning();
 
       res.json({
         document: doc,
-        analysis: sentimentAnalysis
+        analysis: {
+          sentiment: sentimentAnalysis,
+          structure: documentStructure
+        }
       });
 
     } catch (error: any) {
