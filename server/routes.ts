@@ -73,18 +73,13 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
     const data = await fs.readFile(filePath);
     const uint8Array = new Uint8Array(data);
 
-    // Initialize PDF.js without worker
-    const loadingTask = pdfjsLib.getDocument({
+    const pdf = await pdfjsLib.getDocument({
       data: uint8Array,
-      verbosity: pdfjsLib.VerbosityLevel.ERRORS,
-      isEvalSupported: false,
+      verbosity: 0,
       disableFontFace: true,
-      ignoreErrors: true
-    });
+    }).promise;
 
-    const pdf = await loadingTask.promise;
     let text = '';
-
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
