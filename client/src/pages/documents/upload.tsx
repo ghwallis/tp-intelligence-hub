@@ -6,11 +6,11 @@ import { DocumentStructureAnalysis } from "@/components/document-structure-analy
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { 
-  Tooltip, 
-  TooltipContent, 
-  TooltipProvider, 
-  TooltipTrigger 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
 } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
+import { LanguageSelector } from "@/components/language-selector";
 
 export default function DocumentUpload() {
   const [analysisResult, setAnalysisResult] = useState<{
@@ -28,6 +29,7 @@ export default function DocumentUpload() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState("en");
   const { toast } = useToast();
 
   const handleFileUpload = async (event: React.DragEvent<HTMLDivElement> | React.ChangeEvent<HTMLInputElement>) => {
@@ -48,9 +50,9 @@ export default function DocumentUpload() {
 
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('language', selectedLanguage);
 
     try {
-      // Simulate upload progress
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
           if (prev >= 90) {
@@ -94,7 +96,6 @@ export default function DocumentUpload() {
       });
     } finally {
       setIsUploading(false);
-      // Reset progress after a delay
       setTimeout(() => setUploadProgress(0), 1000);
     }
   };
@@ -159,24 +160,30 @@ export default function DocumentUpload() {
               Upload and analyze transfer pricing documentation
             </p>
           </div>
-          {analysisResult && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button disabled={isExporting}>
-                  <Download className="h-4 w-4 mr-2" />
-                  {isExporting ? 'Exporting...' : 'Export Analysis'}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => handleExportAnalysis('pdf')}>
-                  Export as PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExportAnalysis('docx')}>
-                  Export as Word
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <div className="flex items-center gap-4">
+            <LanguageSelector
+              value={selectedLanguage}
+              onChange={setSelectedLanguage}
+            />
+            {analysisResult && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button disabled={isExporting}>
+                    <Download className="h-4 w-4 mr-2" />
+                    {isExporting ? 'Exporting...' : 'Export Analysis'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                  <DropdownMenuItem onClick={() => handleExportAnalysis('pdf')}>
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExportAnalysis('docx')}>
+                    Export as Word
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
 
         <Card>
@@ -222,15 +229,15 @@ export default function DocumentUpload() {
             </div>
 
             {uploadProgress > 0 && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="mt-4 space-y-2"
               >
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>
-                    {uploadProgress < 100 
-                      ? 'Uploading and analyzing...' 
+                    {uploadProgress < 100
+                      ? 'Uploading and analyzing...'
                       : 'Processing complete'}
                   </span>
                   <span>{uploadProgress}%</span>

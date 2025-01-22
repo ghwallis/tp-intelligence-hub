@@ -17,6 +17,9 @@ import pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 import pdfkit from 'pdfkit';
 import HTMLtoDOCX from 'html-to-docx';
 import { pipeline } from 'stream/promises';
+import { detect } from 'langdetect';
+import ISO6391 from 'iso-639-1';
+import translate from '@vitalets/google-translate-api';
 
 // Helper function to extract text from images
 async function extractTextFromImage(filePath: string): Promise<string> {
@@ -62,7 +65,7 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
 }
 
 // Helper function to analyze sentiment
-async function analyzeSentiment(text: string): Promise<{
+async function analyzeSentiment(text: string, language: string = 'en'): Promise<{
   sentiment: string;
   score: number;
   keyDrivers: string[];
@@ -71,7 +74,15 @@ async function analyzeSentiment(text: string): Promise<{
   analysis: string;
 }> {
   try {
-    // Note: gpt-4o is the latest model as of May 13, 2024
+    // Detect the source language if not provided
+    const detectedLang = await detectLanguage(text);
+
+    // Translate text to English for analysis if needed
+    const textForAnalysis = detectedLang !== 'en' 
+      ? await translateText(text, 'en')
+      : text;
+
+    // Perform the analysis in English
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -94,12 +105,26 @@ Format your response as a JSON object with these exact fields:
   "analysis": string
 }`
         },
-        { role: "user", content: text }
+        { role: "user", content: textForAnalysis }
       ],
       response_format: { type: "json_object" }
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    const analysis = JSON.parse(response.choices[0].message.content);
+
+    // Translate results back to target language if needed
+    if (language !== 'en') {
+      analysis.keyDrivers = await Promise.all(
+        analysis.keyDrivers.map(driver => translateText(driver, language))
+      );
+      analysis.riskIndicators = await Promise.all(
+        analysis.riskIndicators.map(risk => translateText(risk, language))
+      );
+      analysis.complianceTone = await translateText(analysis.complianceTone, language);
+      analysis.analysis = await translateText(analysis.analysis, language);
+    }
+
+    return analysis;
   } catch (error) {
     console.error("Sentiment analysis error:", error);
     throw new Error("Failed to analyze document sentiment");
@@ -160,6 +185,29 @@ Format your response as a JSON object with these fields:
     throw new Error("Failed to analyze document structure");
   }
 }
+
+// Add language detection helper function
+async function detectLanguage(text: string): Promise<string> {
+  try {
+    const detection = detect(text);
+    return detection[0].lang;
+  } catch (error) {
+    console.error('Language detection error:', error);
+    return 'en'; // Default to English if detection fails
+  }
+}
+
+// Add translation helper function
+async function translateText(text: string, targetLang: string): Promise<string> {
+  try {
+    const { text: translatedText } = await translate(text, { to: targetLang });
+    return translatedText;
+  } catch (error) {
+    console.error('Translation error:', error);
+    return text; // Return original text if translation fails
+  }
+}
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -276,6 +324,8 @@ export function registerRoutes(app: Express): Server {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
     if (!req.file) return res.status(400).send("No file uploaded");
 
+    const targetLanguage = req.body.language || 'en';
+
     try {
       const fileBuffer = await fs.readFile(req.file.path);
       const fileType = await fileTypeFromBuffer(fileBuffer);
@@ -312,7 +362,7 @@ export function registerRoutes(app: Express): Server {
       try {
         // Run both analyses in parallel
         [sentimentAnalysis, documentStructure] = await Promise.all([
-          analyzeSentiment(fileContent),
+          analyzeSentiment(fileContent, targetLanguage),
           analyzeDocumentStructure(fileContent)
         ]);
         console.log("Document analysis completed");
@@ -333,6 +383,7 @@ export function registerRoutes(app: Express): Server {
             mimetype: fileType?.mime || req.file.mimetype,
             originalName: req.file.originalname,
             filePath: req.file.path,
+            language: targetLanguage,
             sentimentAnalysis,
             documentStructure
           }
