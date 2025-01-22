@@ -19,7 +19,7 @@ import HTMLtoDOCX from 'html-to-docx';
 import { pipeline } from 'stream/promises';
 import { detect } from 'langdetect';
 import ISO6391 from 'iso-639-1';
-import translate from '@vitalets/google-translate-api';
+import * as googleTranslate from '@vitalets/google-translate-api';
 
 // Helper function to extract text from images
 async function extractTextFromImage(filePath: string): Promise<string> {
@@ -37,7 +37,6 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
     const buffer = await fs.readFile(filePath);
     const data = new Uint8Array(buffer);
 
-    // Load the PDF document with minimal dependencies
     const loadingTask = pdfjsLib.getDocument({
       data,
       useSystemFonts: false,
@@ -50,7 +49,6 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
     const pdfDocument = await loadingTask.promise;
     let text = '';
 
-    // Extract text from each page
     for (let i = 1; i <= pdfDocument.numPages; i++) {
       const page = await pdfDocument.getPage(i);
       const textContent = await page.getTextContent();
@@ -64,6 +62,33 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
   }
 }
 
+// Add language detection helper function
+async function detectLanguage(text: string): Promise<string> {
+  try {
+    const detection = detect(text);
+    if (Array.isArray(detection) && detection.length > 0) {
+      return detection[0].lang;
+    }
+    return 'en'; // Default to English if detection fails
+  } catch (error) {
+    console.error('Language detection error:', error);
+    return 'en'; // Default to English if detection fails
+  }
+}
+
+// Fixed translation helper function
+async function translateText(text: string, targetLang: string): Promise<string> {
+  if (!text || text.trim() === '') return text;
+
+  try {
+    const result = await googleTranslate.translate(text, { to: targetLang });
+    return result.text;
+  } catch (error) {
+    console.error('Translation error:', error);
+    return text; // Return original text if translation fails
+  }
+}
+
 // Helper function to analyze sentiment
 async function analyzeSentiment(text: string, language: string = 'en'): Promise<{
   sentiment: string;
@@ -74,13 +99,17 @@ async function analyzeSentiment(text: string, language: string = 'en'): Promise<
   analysis: string;
 }> {
   try {
-    // Detect the source language if not provided
+    // Detect the source language
     const detectedLang = await detectLanguage(text);
+    console.log('Detected language:', detectedLang);
 
     // Translate text to English for analysis if needed
-    const textForAnalysis = detectedLang !== 'en' 
-      ? await translateText(text, 'en')
-      : text;
+    let textForAnalysis = text;
+    if (detectedLang !== 'en') {
+      console.log('Translating text to English for analysis...');
+      textForAnalysis = await translateText(text, 'en');
+      console.log('Text translated successfully');
+    }
 
     // Perform the analysis in English
     const response = await openai.chat.completions.create({
@@ -114,14 +143,21 @@ Format your response as a JSON object with these exact fields:
 
     // Translate results back to target language if needed
     if (language !== 'en') {
+      console.log('Translating analysis results to target language:', language);
+
+      // Translate arrays of strings
       analysis.keyDrivers = await Promise.all(
-        analysis.keyDrivers.map(driver => translateText(driver, language))
+        analysis.keyDrivers.map((driver: string) => translateText(driver, language))
       );
       analysis.riskIndicators = await Promise.all(
-        analysis.riskIndicators.map(risk => translateText(risk, language))
+        analysis.riskIndicators.map((risk: string) => translateText(risk, language))
       );
+
+      // Translate individual strings
       analysis.complianceTone = await translateText(analysis.complianceTone, language);
       analysis.analysis = await translateText(analysis.analysis, language);
+
+      console.log('Analysis results translated successfully');
     }
 
     return analysis;
@@ -186,65 +222,6 @@ Format your response as a JSON object with these fields:
   }
 }
 
-// Add language detection helper function
-async function detectLanguage(text: string): Promise<string> {
-  try {
-    const detection = detect(text);
-    return detection[0].lang;
-  } catch (error) {
-    console.error('Language detection error:', error);
-    return 'en'; // Default to English if detection fails
-  }
-}
-
-// Add translation helper function
-async function translateText(text: string, targetLang: string): Promise<string> {
-  try {
-    const { text: translatedText } = await translate(text, { to: targetLang });
-    return translatedText;
-  } catch (error) {
-    console.error('Translation error:', error);
-    return text; // Return original text if translation fails
-  }
-}
-
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: 'uploads/',
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({
-  storage,
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = [
-      'image/jpeg', 'image/png', 'image/tiff',
-      'application/pdf',
-      'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain'
-    ];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Invalid file type'));
-    }
-  }
-});
-
-// Ensure uploads directory exists
-fs.mkdir('uploads', { recursive: true }).catch(console.error);
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 // Add this helper function at the top of the file
 function generateAnalysisHTML(analysis: any) {
@@ -315,6 +292,43 @@ function generateAnalysisHTML(analysis: any) {
     </html>
   `;
 }
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: 'uploads/',
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'image/tiff',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
+
+// Ensure uploads directory exists
+fs.mkdir('uploads', { recursive: true }).catch(console.error);
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
