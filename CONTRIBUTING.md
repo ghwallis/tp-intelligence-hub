@@ -21,66 +21,129 @@ Pull requests are the best way to propose changes to the codebase. We actively w
 5. Make sure your code lints.
 6. Issue that pull request!
 
-## Any contributions you make will be under the MIT Software License
-In short, when you submit code changes, your submissions are understood to be under the same [MIT License](http://choosealicense.com/licenses/mit/) that covers the project. Feel free to contact the maintainers if that's a concern.
-
-## Report bugs using Github's [issue tracker](https://github.com/yourorg/transfer-pricing-hub/issues)
-We use GitHub issues to track public bugs. Report a bug by [opening a new issue](https://github.com/yourorg/transfer-pricing-hub/issues/new); it's that easy!
-
-## Write bug reports with detail, background, and sample code
-
-**Great Bug Reports** tend to have:
-
-- A quick summary and/or background
-- Steps to reproduce
-  - Be specific!
-  - Give sample code if you can.
-- What you expected would happen
-- What actually happens
-- Notes (possibly including why you think this might be happening, or stuff you tried that didn't work)
-
 ## Development Process
 
-1. Create a new branch from `main` for your feature/bugfix
-2. Install dependencies: `npm install`
-3. Make your changes
-4. Run tests: `npm test`
-5. Run linter: `npm run lint`
-6. Submit a pull request
+### Setting Up Development Environment
+1. Ensure you have Node.js 18+ installed
+2. Clone the repository: `git clone https://github.com/your-org/transfer-pricing-hub`
+3. Install dependencies: `npm install`
+4. Set up environment variables (see below)
+5. Start development server: `npm run dev`
 
-### Commit Message Format
-
-We follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This leads to more readable messages that are easy to follow when looking through the project history.
-
-```
-<type>(<scope>): <subject>
-<BLANK LINE>
-<body>
-<BLANK LINE>
-<footer>
+### Environment Variables Required
+```env
+DATABASE_URL=postgresql://...
+OPENAI_API_KEY=sk-...
+AWS_REGION=...
+DOCDB_CLUSTER_ENDPOINT=...
+DOCDB_USERNAME=...
+DOCDB_PASSWORD=...
 ```
 
-The `type` must be one of the following:
+### Code Structure
+```
+├── client/                  # Frontend React application
+│   ├── src/
+│   │   ├── components/     # Reusable UI components
+│   │   ├── hooks/         # Custom React hooks
+│   │   ├── lib/           # Utility functions
+│   │   └── pages/         # Page components
+├── db/                     # Database models and migrations
+│   ├── docdb/            # DocumentDB configuration
+│   └── schema.ts         # Drizzle schema definitions
+├── server/                 # Backend Express application
+│   ├── routes.ts         # API routes
+│   └── vite.ts           # Vite configuration
+```
 
-- `feat`: A new feature
-- `fix`: A bug fix
-- `docs`: Documentation only changes
-- `style`: Changes that do not affect the meaning of the code
-- `refactor`: A code change that neither fixes a bug nor adds a feature
-- `perf`: A code change that improves performance
-- `test`: Adding missing tests or correcting existing tests
-- `chore`: Changes to the build process or auxiliary tools and libraries
+### Development Guidelines
 
-### Code Style
+#### Frontend
+- Use TypeScript for all new code
+- Follow React hooks best practices
+- Implement responsive design using Tailwind CSS
+- Use shadcn/ui components for consistent UI
+- Implement proper error handling and loading states
+- Write meaningful test cases
 
-- We use ESLint and Prettier for code formatting
+#### Backend
+- Follow RESTful API design principles
+- Use proper error handling middleware
+- Implement input validation using Zod
+- Write comprehensive API documentation
+- Maintain security best practices
+- Follow clean code principles
+
+#### Database
+- Use Drizzle ORM for database operations
+- Write clear and maintainable schemas
+- Follow naming conventions
+- Document all schema changes
+- Create proper indexes for performance
+
+### Code Style Guidelines
+- Use ESLint and Prettier for code formatting
 - Follow the existing code style
 - Use meaningful variable and function names
 - Add comments for complex logic
 - Keep functions small and focused
+- Use TypeScript types effectively
+
+### Testing
+- Write unit tests for all new features
+- Test edge cases and error scenarios
+- Run the full test suite before submitting PR
+- Include both frontend and backend tests
+- Write integration tests for critical flows
+
+### Documentation
+- Update README.md for major changes
+- Document all new features
+- Include JSDoc comments for functions
+- Update API documentation
+- Add comments for complex logic
+
+### Git Commit Guidelines
+Follow [Conventional Commits](https://www.conventionalcommits.org/) specification:
+
+```
+<type>(<scope>): <subject>
+
+<body>
+
+<footer>
+```
+
+Types:
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation only
+- `style`: Code style changes
+- `refactor`: Code changes (no features/fixes)
+- `perf`: Performance improvements
+- `test`: Adding tests
+- `chore`: Build process or tools
+
+### Pull Request Process
+1. Update documentation
+2. Update the changelog
+3. Get review from maintainers
+4. Address review comments
+5. Update based on feedback
+6. Get final approval
+7. Merge to main branch
 
 ## License
 By contributing, you agree that your contributions will be licensed under its MIT License.
 
-## References
-This document was adapted from the open-source contribution guidelines for [Facebook's Draft](https://github.com/facebook/draft-js/blob/a9316a723f9e918afde44dea68b5f9f39b7d9b00/CONTRIBUTING.md).
+## Questions?
+Feel free to open an issue for discussion or contact the maintainers directly.
+
+## Code of Conduct
+- Be respectful and inclusive
+- Welcome newcomers
+- Focus on constructive feedback
+- Maintain professionalism
+- Follow project guidelines
+
+This contributing guide was inspired by the open-source contribution guidelines for [Facebook's Draft](https://github.com/facebook/draft-js/blob/a9316a723f9e918afde44dea68b5f9f39b7d9b00/CONTRIBUTING.md).
