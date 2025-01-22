@@ -14,6 +14,9 @@ import fs from 'fs/promises';
 import { fileTypeFromBuffer } from 'file-type';
 import { createWorker } from 'tesseract.js';
 import pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+import pdfkit from 'pdfkit';
+import HTMLtoDOCX from 'html-to-docx';
+import { pipeline } from 'stream/promises';
 
 // Helper function to extract text from images
 async function extractTextFromImage(filePath: string): Promise<string> {
@@ -195,6 +198,76 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Add this helper function at the top of the file
+function generateAnalysisHTML(analysis: any) {
+  return `
+    <html>
+    <head>
+      <style>
+        body { font-family: Arial, sans-serif; }
+        h1 { color: #2D3748; }
+        h2 { color: #4A5568; margin-top: 20px; }
+        .section { margin: 20px 0; }
+        .badge { 
+          display: inline-block;
+          padding: 4px 8px;
+          margin: 4px;
+          border-radius: 4px;
+          background: #EDF2F7;
+          color: #2D3748;
+        }
+        .date { color: #718096; }
+      </style>
+    </head>
+    <body>
+      <h1>Document Analysis Report</h1>
+      <div class="section">
+        <h2>Sentiment Analysis</h2>
+        <p>Overall Sentiment: ${analysis.sentiment.sentiment}</p>
+        <p>Confidence Score: ${Math.round(analysis.sentiment.score * 100)}%</p>
+
+        <h3>Key Drivers</h3>
+        ${analysis.sentiment.keyDrivers.map((driver: string) => 
+          `<div class="badge">${driver}</div>`
+        ).join('')}
+
+        <h3>Risk Indicators</h3>
+        ${analysis.sentiment.riskIndicators.map((risk: string) => 
+          `<div class="badge">${risk}</div>`
+        ).join('')}
+      </div>
+
+      <div class="section">
+        <h2>Document Structure Analysis</h2>
+        ${analysis.structure.taxAuthority ? 
+          `<p><strong>Tax Authority:</strong> ${analysis.structure.taxAuthority}</p>` : ''}
+
+        ${analysis.structure.targetEntities?.length ? `
+          <h3>Target Entities</h3>
+          ${analysis.structure.targetEntities.map((entity: string) => 
+            `<div class="badge">${entity}</div>`
+          ).join('')}
+        ` : ''}
+
+        ${analysis.structure.auditAreas?.length ? `
+          <h3>Audit Areas</h3>
+          ${analysis.structure.auditAreas.map((area: string) => 
+            `<div class="badge">${area}</div>`
+          ).join('')}
+        ` : ''}
+
+        ${analysis.structure.keyDates?.length ? `
+          <h3>Key Dates</h3>
+          ${analysis.structure.keyDates.map((date: any) => 
+            `<p><span class="date">${date.date}</span> - ${date.description}</p>`
+          ).join('')}
+        ` : ''}
+      </div>
+    </body>
+    </html>
+  `;
+}
+
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -303,6 +376,120 @@ export function registerRoutes(app: Express): Server {
       console.error("Failed to fetch recent analyses:", error);
       res.status(500).json({
         error: error.message || "Failed to fetch recent analyses",
+      });
+    }
+  });
+
+  // Add this new endpoint to the registerRoutes function
+  app.post("/api/documents/export", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    const { analysis, format } = req.body;
+    if (!analysis || !format) {
+      return res.status(400).send("Missing required fields");
+    }
+
+    try {
+      if (format === 'pdf') {
+        const doc = new pdfkit();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', 'attachment; filename=document-analysis.pdf');
+
+        doc.pipe(res);
+
+        // Add content to PDF
+        doc
+          .fontSize(24)
+          .text('Document Analysis Report', { align: 'center' })
+          .moveDown();
+
+        // Sentiment Analysis Section
+        doc
+          .fontSize(18)
+          .text('Sentiment Analysis')
+          .moveDown()
+          .fontSize(12)
+          .text(`Overall Sentiment: ${analysis.sentiment.sentiment}`)
+          .text(`Confidence Score: ${Math.round(analysis.sentiment.score * 100)}%`)
+          .moveDown();
+
+        // Key Drivers
+        doc
+          .fontSize(14)
+          .text('Key Drivers')
+          .moveDown()
+          .fontSize(12);
+        analysis.sentiment.keyDrivers.forEach((driver: string) => {
+          doc.text(`• ${driver}`);
+        });
+        doc.moveDown();
+
+        // Risk Indicators
+        doc
+          .fontSize(14)
+          .text('Risk Indicators')
+          .moveDown()
+          .fontSize(12);
+        analysis.sentiment.riskIndicators.forEach((risk: string) => {
+          doc.text(`• ${risk}`);
+        });
+        doc.moveDown();
+
+        // Document Structure Section
+        doc
+          .fontSize(18)
+          .text('Document Structure Analysis')
+          .moveDown();
+
+        if (analysis.structure.taxAuthority) {
+          doc
+            .fontSize(12)
+            .text(`Tax Authority: ${analysis.structure.taxAuthority}`)
+            .moveDown();
+        }
+
+        if (analysis.structure.targetEntities?.length) {
+          doc
+            .fontSize(14)
+            .text('Target Entities')
+            .moveDown()
+            .fontSize(12);
+          analysis.structure.targetEntities.forEach((entity: string) => {
+            doc.text(`• ${entity}`);
+          });
+          doc.moveDown();
+        }
+
+        if (analysis.structure.keyDates?.length) {
+          doc
+            .fontSize(14)
+            .text('Key Dates')
+            .moveDown()
+            .fontSize(12);
+          analysis.structure.keyDates.forEach((date: any) => {
+            doc.text(`${date.date} - ${date.description}`);
+          });
+        }
+
+        doc.end();
+      } else if (format === 'docx') {
+        const html = generateAnalysisHTML(analysis);
+        const docx = await HTMLtoDOCX(html, null, {
+          table: { row: { cantSplit: true } },
+          footer: true,
+          pageNumber: true,
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', 'attachment; filename=document-analysis.docx');
+        res.send(docx);
+      } else {
+        res.status(400).send("Unsupported format");
+      }
+    } catch (error: any) {
+      console.error("Export error:", error);
+      res.status(500).json({
+        error: error.message || "Failed to export document",
       });
     }
   });
