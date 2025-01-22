@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { db } from "@db";
-import { users, documents, auditNotices, noticeAnalysis } from "@db/schema";
+import { users, documents, auditNotices } from "@db/schema";
 import { eq, desc } from "drizzle-orm";
 import OpenAI from "openai";
 import { WebSocketServer } from 'ws';
@@ -52,7 +52,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Helper function to extract text from images
+// Helper function to extract text from images using Tesseract
 async function extractTextFromImage(filePath: string): Promise<string> {
   const worker = await createWorker();
   await worker.loadLanguage('eng');
@@ -66,10 +66,9 @@ async function extractTextFromImage(filePath: string): Promise<string> {
 async function extractTextFromPDF(filePath: string): Promise<string> {
   try {
     const data = await fs.readFile(filePath);
-    const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(data) });
-    const pdf = await loadingTask.promise;
-
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(data) }).promise;
     let text = '';
+
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
@@ -85,39 +84,55 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
   }
 }
 
-// Helper function to analyze notices
-async function analyzeNotice(text: string): Promise<any> {
+// Helper function to analyze sentiment
+async function analyzeSentiment(text: string): Promise<{
+  sentiment: string;
+  score: number;
+  keyDrivers: string[];
+  riskIndicators: string[];
+  complianceTone: string;
+  analysis: string;
+}> {
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
-          content: `Analyze this notice and provide JSON response with:
-1. Summary (max 3 sentences)
-2. Key issues (up to 5)
-3. Suggested responses (up to 5)
-4. Required documents (up to 5)
-5. Risk assessment with risk level and factors`
+          content: `You are an expert in transfer pricing document analysis. Analyze the sentiment and tone of transfer pricing documents, focusing on:
+1. Overall sentiment (positive/negative/neutral)
+2. Key sentiment drivers
+3. Risk indicators
+4. Compliance tone
+5. Detailed analysis
+
+Format your response as a JSON object with these exact fields:
+{
+  "sentiment": "positive" | "negative" | "neutral",
+  "score": number between 0 and 1,
+  "keyDrivers": string[],
+  "riskIndicators": string[],
+  "complianceTone": string,
+  "analysis": string
+}`
         },
         { role: "user", content: text }
       ],
-      temperature: 0.7,
       response_format: { type: "json_object" }
     });
 
     return JSON.parse(response.choices[0].message.content);
   } catch (error) {
-    console.error("OpenAI analysis error:", error);
-    throw new Error("Failed to analyze notice content");
+    console.error("Sentiment analysis error:", error);
+    throw new Error("Failed to analyze document sentiment");
   }
 }
 
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
-  // Notice Management Routes
-  app.post("/api/notices/upload", upload.single('file'), async (req, res) => {
+  // Document upload endpoint with sentiment analysis
+  app.post("/api/documents/upload", upload.single('file'), async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
     if (!req.file) return res.status(400).send("No file uploaded");
 
@@ -130,38 +145,49 @@ export function registerRoutes(app: Express): Server {
         type: fileType?.mime || req.file.mimetype
       });
 
-      if (fileType?.mime.startsWith('image/')) {
-        fileContent = await extractTextFromImage(req.file.path);
-      } else if (fileType?.mime === 'application/pdf') {
-        fileContent = await extractTextFromPDF(req.file.path);
-      } else {
-        fileContent = await fs.readFile(req.file.path, 'utf-8');
+      try {
+        if (fileType?.mime.startsWith('image/')) {
+          fileContent = await extractTextFromImage(req.file.path);
+        } else if (fileType?.mime === 'application/pdf') {
+          fileContent = await extractTextFromPDF(req.file.path);
+        } else {
+          fileContent = await fs.readFile(req.file.path, 'utf-8');
+        }
+
+        console.log("Content extracted successfully, length:", fileContent.length);
+      } catch (extractError) {
+        console.error("Content extraction error:", extractError);
+        throw new Error(`Failed to extract content: ${extractError.message}`);
       }
 
-      const analysis = await analyzeNotice(fileContent);
+      let sentimentAnalysis;
+      try {
+        sentimentAnalysis = await analyzeSentiment(fileContent);
+        console.log("Sentiment analysis completed");
+      } catch (analysisError) {
+        console.error("Sentiment analysis error:", analysisError);
+        throw new Error(`Failed to analyze sentiment: ${analysisError.message}`);
+      }
 
-      const [notice] = await db.insert(auditNotices)
+      const [doc] = await db.insert(documents)
         .values({
           title: req.file.originalname,
           content: fileContent,
-          noticeType: req.body.noticeType || 'audit',
-          jurisdiction: req.body.jurisdiction || 'Unknown',
-          receivedDate: new Date(),
-          dueDate: req.body.dueDate ? new Date(req.body.dueDate) : null,
           userId: req.user.id,
+          status: 'analyzed',
           metadata: {
             size: req.file.size,
             mimetype: fileType?.mime || req.file.mimetype,
             originalName: req.file.originalname,
             filePath: req.file.path,
-            analysis
+            sentimentAnalysis
           }
         })
         .returning();
 
       res.json({
-        notice,
-        analysis
+        document: doc,
+        analysis: sentimentAnalysis
       });
 
     } catch (error: any) {
