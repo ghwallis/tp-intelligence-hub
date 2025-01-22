@@ -2,6 +2,10 @@
 
 A sophisticated AI-powered platform revolutionizing transfer pricing compliance and risk management for global finance professionals.
 
+
+[![Watch the Video Here](https://user-images.githubusercontent.com/9e9f40d1-054e-48b0-a3a4-8f65588e8120)](https://github.com/user-attachments/assets/9e9f40d1-054e-48b0-a3a4-8f65588e8120)
+
+
 ## 🚀 Features
 
 ### Core Capabilities
@@ -70,6 +74,8 @@ A sophisticated AI-powered platform revolutionizing transfer pricing compliance 
                        │ - Compliance Check      │
                        └──────────────────────────┘
 ```
+
+
 
 ### Data Model
 ```sql
