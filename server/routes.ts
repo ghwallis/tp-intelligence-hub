@@ -71,13 +71,15 @@ async function extractTextFromImage(filePath: string): Promise<string> {
 async function extractTextFromPDF(filePath: string): Promise<string> {
   try {
     const data = await fs.readFile(filePath);
-    // Convert Buffer to Uint8Array for PDF.js compatibility
     const uint8Array = new Uint8Array(data);
 
     const loadingTask = pdfjsLib.getDocument({
       data: uint8Array,
-      useWorker: false, // Disable worker to avoid compatibility issues
+      useWorker: false,
       standardFontDataUrl: `file://${__dirname}/../node_modules/pdfjs-dist/standard_fonts/`,
+      disableFontFace: true,
+      cMapUrl: `file://${__dirname}/../node_modules/pdfjs-dist/cmaps/`,
+      cMapPacked: true,
     });
 
     const pdf = await loadingTask.promise;
@@ -85,8 +87,8 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
 
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      text += textContent.items
+      const content = await page.getTextContent();
+      text += content.items
         .filter((item: any) => item.str && item.str.trim())
         .map((item: any) => item.str)
         .join(' ') + '\n';
@@ -246,7 +248,7 @@ export function registerRoutes(app: Express): Server {
     if (!req.file) return res.status(400).send("No file uploaded");
 
     try {
-      // Detect file type
+      // Extract text content based on file type
       const fileType = await fileTypeFromFile(req.file.path);
       let fileContent = '';
 
@@ -255,28 +257,35 @@ export function registerRoutes(app: Express): Server {
         type: fileType?.mime || req.file.mimetype
       });
 
-      // Extract text based on file type
-      if (fileType?.mime.startsWith('image/')) {
-        console.log("Processing image file...");
-        fileContent = await extractTextFromImage(req.file.path);
-      } else if (fileType?.mime === 'application/pdf') {
-        console.log("Processing PDF file...");
-        fileContent = await extractTextFromPDF(req.file.path);
-      } else {
-        // For text files and other documents, read directly
-        console.log("Processing text/document file...");
-        fileContent = await fs.readFile(req.file.path, 'utf-8');
+      try {
+        if (fileType?.mime.startsWith('image/')) {
+          fileContent = await extractTextFromImage(req.file.path);
+        } else if (fileType?.mime === 'application/pdf') {
+          fileContent = await extractTextFromPDF(req.file.path);
+        } else {
+          fileContent = await fs.readFile(req.file.path, 'utf-8');
+        }
+
+        console.log("Content extracted successfully, length:", fileContent.length);
+      } catch (extractError) {
+        console.error("Content extraction error:", extractError);
+        throw new Error(`Failed to extract content: ${extractError.message}`);
       }
 
-      console.log("Content extracted, length:", fileContent.length);
-
       // Analyze the notice content
-      const analysis = await analyzeNotice(fileContent);
+      let analysis;
+      try {
+        analysis = await analyzeNotice(fileContent);
+        console.log("Notice analysis completed");
+      } catch (analysisError) {
+        console.error("Notice analysis error:", analysisError);
+        throw new Error(`Failed to analyze notice: ${analysisError.message}`);
+      }
 
       // Create notice record with analysis
       const [notice] = await db.insert(auditNotices)
         .values({
-          title: req.body.title || req.file.originalname,
+          title: req.file.originalname,
           content: fileContent,
           noticeType: req.body.noticeType || 'audit',
           jurisdiction: req.body.jurisdiction || 'Unknown',
@@ -313,13 +322,13 @@ export function registerRoutes(app: Express): Server {
       });
 
     } catch (error: any) {
-      console.error("Notice upload error:", error);
+      console.error("Upload error:", error);
       // Clean up uploaded file in case of error
       if (req.file?.path) {
         fs.unlink(req.file.path).catch(console.error);
       }
-      res.status(500).json({ 
-        error: error.message || "Failed to process notice",
+      res.status(500).json({
+        error: error.message || "Failed to process upload",
         details: error.toString()
       });
     }
@@ -571,7 +580,7 @@ You can access current transfer pricing developments and news. When asked about 
       if (req.file?.path) {
         fs.unlink(req.file.path).catch(console.error);
       }
-      res.status(500).json({ 
+      res.status(500).json({
         error: error.message || "Failed to process upload",
         details: error.toString()
       });
@@ -886,8 +895,8 @@ Focus on these exact areas (use these exact names):
 5. Local Regulations
 6. Global Standards
 
-Your response must be a valid JSON array without any markdown formatting or additional text.
-Each object in the array must have exactly these fields:
+Your response must be a valid JSONarray without any markdown formatting or additional text.
+Each object in the array must haveexactly these fields:
 - area: string (one of the areas listed above)
 - score: number (0-100)
 - description: string (brief explanation)
