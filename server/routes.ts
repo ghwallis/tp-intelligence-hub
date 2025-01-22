@@ -298,7 +298,7 @@ export function registerRoutes(app: Express): Server {
         .returning();
 
       // Create analysis record
-      const [analysis_record] = await db.insert(noticeAnalysis)
+      const [analysisRecord] = await db.insert(noticeAnalysis)
         .values({
           noticeId: notice.id,
           summary: analysis.summary,
@@ -313,7 +313,7 @@ export function registerRoutes(app: Express): Server {
 
       res.json({
         notice,
-        analysis: analysis_record
+        analysis: analysisRecord
       });
 
     } catch (error: any) {
@@ -900,7 +900,7 @@ Example format:
 [{"area":"Documentation Compliance","score":75,"description":"Current documentation is mostly complete but requires updates"}]`;
 
       const response = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "gpt-3.5turbo",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: JSON.stringify(context) }
