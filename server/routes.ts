@@ -286,6 +286,27 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Get recent document analyses
+  app.get("/api/documents/recent-analyses", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    try {
+      const recentDocs = await db
+        .select()
+        .from(documents)
+        .where(eq(documents.userId, req.user.id))
+        .orderBy(desc(documents.createdAt))
+        .limit(10);
+
+      res.json(recentDocs);
+    } catch (error: any) {
+      console.error("Failed to fetch recent analyses:", error);
+      res.status(500).json({
+        error: error.message || "Failed to fetch recent analyses",
+      });
+    }
+  });
+
   // Create HTTP server
   const httpServer = createServer(app);
 

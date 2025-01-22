@@ -1,10 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload } from "lucide-react";
+import { Upload, HelpCircle, Download } from "lucide-react";
 import { useState } from "react";
 import { SentimentAnalysis } from "@/components/sentiment-analysis";
 import { DocumentStructureAnalysis } from "@/components/document-structure-analysis";
 import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function DocumentUpload() {
   const [analysisResult, setAnalysisResult] = useState<{
@@ -84,74 +87,131 @@ export default function DocumentUpload() {
     }
   };
 
+  const handleExportAnalysis = () => {
+    if (!analysisResult) return;
+
+    const exportData = {
+      timestamp: new Date().toISOString(),
+      analysis: analysisResult
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'document-analysis.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Document Upload</h1>
-          <p className="text-muted-foreground mt-2">
-            Upload and analyze transfer pricing documentation
-          </p>
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload Documents</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-              isUploading ? 'opacity-50 pointer-events-none' : 'hover:border-primary'
-            }`}
-            onDrop={handleFileUpload}
-            onDragOver={handleDragOver}
-            onClick={() => {
-              if (!isUploading) {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.pdf,.doc,.docx,.txt';
-                input.addEventListener('change', handleFileUpload);
-                input.click();
-              }
-            }}
-          >
-            <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
-            <div className="text-sm text-muted-foreground">
-              {isUploading ? 'Uploading...' : 'Drag and drop your files here, or click to browse'}
-            </div>
-            <div className="text-xs text-muted-foreground mt-2">
-              Supported formats: PDF, Word, Text files
-            </div>
+    <TooltipProvider>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">Document Upload</h1>
+            <p className="text-muted-foreground mt-2">
+              Upload and analyze transfer pricing documentation
+            </p>
           </div>
-
-          {uploadProgress > 0 && (
-            <div className="mt-4 space-y-2">
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>
-                  {uploadProgress < 100 
-                    ? 'Uploading and analyzing...' 
-                    : 'Processing complete'}
-                </span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <Progress value={uploadProgress} className="h-2" />
-            </div>
+          {analysisResult && (
+            <Button onClick={handleExportAnalysis}>
+              <Download className="h-4 w-4 mr-2" />
+              Export Analysis
+            </Button>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {analysisResult?.sentiment && (
-        <SentimentAnalysis analysis={analysisResult.sentiment} />
-      )}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Upload Documents</CardTitle>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <HelpCircle className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-[300px]">
+                  <p>Upload your transfer pricing documents for AI-powered analysis. We'll analyze the sentiment, structure, and key information automatically.</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                isUploading ? 'opacity-50 pointer-events-none' : 'hover:border-primary'
+              }`}
+              onDrop={handleFileUpload}
+              onDragOver={handleDragOver}
+              onClick={() => {
+                if (!isUploading) {
+                  const input = document.createElement('input');
+                  input.type = 'file';
+                  input.accept = '.pdf,.doc,.docx,.txt';
+                  input.addEventListener('change', handleFileUpload);
+                  input.click();
+                }
+              }}
+            >
+              <Upload className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
+              <div className="text-sm text-muted-foreground">
+                {isUploading ? 'Uploading...' : 'Drag and drop your files here, or click to browse'}
+              </div>
+              <div className="text-xs text-muted-foreground mt-2">
+                Supported formats: PDF, Word, Text files
+              </div>
+            </div>
 
-      {analysisResult?.structure && (
-        <DocumentStructureAnalysis analysis={analysisResult.structure} />
-      )}
-    </div>
+            {uploadProgress > 0 && (
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 space-y-2"
+              >
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>
+                    {uploadProgress < 100 
+                      ? 'Uploading and analyzing...' 
+                      : 'Processing complete'}
+                  </span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <Progress value={uploadProgress} className="h-2" />
+              </motion.div>
+            )}
+          </CardContent>
+        </Card>
+
+        <AnimatePresence>
+          {analysisResult?.sentiment && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <SentimentAnalysis analysis={analysisResult.sentiment} />
+            </motion.div>
+          )}
+
+          {analysisResult?.structure && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <DocumentStructureAnalysis analysis={analysisResult.structure} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </TooltipProvider>
   );
 }

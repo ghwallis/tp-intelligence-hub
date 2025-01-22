@@ -10,18 +10,23 @@ import { SidebarNav } from "@/components/sidebar-nav";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ChatBot } from "@/components/chat-bot";
 
-// Import all pages
+// Import key pages
 import Dashboard from "@/pages/dashboard";
+import NoticeManagement from "@/pages/controversy/notices";
+import AIInsights from "@/pages/ai-insights";
+import DocumentUpload from "@/pages/documents/upload";
 import Documentation from "@/pages/documentation";
 import Compliance from "@/pages/compliance";
+import BEPSCompliance from "@/pages/compliance/beps";
+import EUATAD from "@/pages/compliance/eu-atad";
+import PillarTwo from "@/pages/compliance/pillar-two";
+import APAManagement from "@/pages/compliance/apa";
 import Controversy from "@/pages/controversy";
-import NoticeManagement from "@/pages/controversy/notices";
 import AuditManagement from "@/pages/controversy/audit";
 import ControversyDocumentation from "@/pages/controversy/documentation";
 import TimelineTracker from "@/pages/controversy/timeline";
 import DisputeResolution from "@/pages/controversy/dispute";
 import Analytics from "@/pages/analytics";
-import AIInsights from "@/pages/ai-insights";
 import Benchmarking from "@/pages/benchmarking";
 import BenchmarkAnalytics from "@/pages/benchmarking/analytics";
 import DataSources from "@/pages/benchmarking/data-sources";
@@ -30,18 +35,12 @@ import Integrations from "@/pages/integrations";
 import Settings from "@/pages/settings";
 import Team from "@/pages/team";
 import Templates from "@/pages/templates";
-import DocumentUpload from "@/pages/documents/upload";
 import Documents from "@/pages/documents";
 import Collaboration from "@/pages/collaboration";
 import Deadlines from "@/pages/deadlines";
 import VersionControl from "@/pages/version-control";
 import Workflow from "@/pages/workflow";
 
-// Import compliance-specific pages
-import BEPSCompliance from "@/pages/compliance/beps";
-import EUATAD from "@/pages/compliance/eu-atad";
-import PillarTwo from "@/pages/compliance/pillar-two";
-import APAManagement from "@/pages/compliance/apa";
 
 function Router() {
   const { user, isLoading } = useUser();
