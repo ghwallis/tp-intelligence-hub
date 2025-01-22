@@ -73,13 +73,13 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
     const data = await fs.readFile(filePath);
     const uint8Array = new Uint8Array(data);
 
+    // Initialize PDF.js without worker
     const loadingTask = pdfjsLib.getDocument({
       data: uint8Array,
-      useWorker: false,
-      standardFontDataUrl: `file://${__dirname}/../node_modules/pdfjs-dist/standard_fonts/`,
+      verbosity: pdfjsLib.VerbosityLevel.ERRORS,
+      isEvalSupported: false,
       disableFontFace: true,
-      cMapUrl: `file://${__dirname}/../node_modules/pdfjs-dist/cmaps/`,
-      cMapPacked: true,
+      ignoreErrors: true
     });
 
     const pdf = await loadingTask.promise;
@@ -95,7 +95,7 @@ async function extractTextFromPDF(filePath: string): Promise<string> {
     }
 
     return text || "No text content could be extracted from PDF";
-  } catch (error) {
+  } catch (error: any) {
     console.error("PDF extraction error:", error);
     throw new Error(`Failed to extract text from PDF: ${error.message}`);
   }
