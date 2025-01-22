@@ -7,13 +7,101 @@ import { eq, desc } from "drizzle-orm";
 import OpenAI from "openai";
 import { WebSocketServer } from 'ws';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import path from 'path';
+import fs from 'fs/promises';
 import { fileTypeFromBuffer } from 'file-type';
 import { createWorker } from 'tesseract.js';
-import * as pdfjsLib from 'pdfjs-dist';
+import pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+
+// Helper function to extract text from images
+async function extractTextFromImage(filePath: string): Promise<string> {
+  const worker = await createWorker();
+  await worker.loadLanguage('eng');
+  await worker.initialize('eng');
+  const { data: { text } } = await worker.recognize(filePath);
+  await worker.terminate();
+  return text;
+}
+
+// Helper function to extract text from PDF without worker dependency
+async function extractTextFromPDF(filePath: string): Promise<string> {
+  try {
+    const buffer = await fs.readFile(filePath);
+    const data = new Uint8Array(buffer);
+
+    // Load the PDF document with minimal dependencies
+    const loadingTask = pdfjsLib.getDocument({
+      data,
+      useSystemFonts: false,
+      disableFontFace: true,
+      standardFontDataUrl: path.join(__dirname, '../node_modules/pdfjs-dist/standard_fonts/'),
+      isEvalSupported: false,
+      useWorker: false
+    });
+
+    const pdfDocument = await loadingTask.promise;
+    let text = '';
+
+    // Extract text from each page
+    for (let i = 1; i <= pdfDocument.numPages; i++) {
+      const page = await pdfDocument.getPage(i);
+      const textContent = await page.getTextContent();
+      text += textContent.items.map((item: any) => item.str).join(' ') + '\n';
+    }
+
+    return text || "No text content could be extracted from PDF";
+  } catch (error: any) {
+    console.error("PDF extraction error:", error);
+    throw new Error(`Failed to extract text from PDF: ${error.message}`);
+  }
+}
+
+// Helper function to analyze sentiment
+async function analyzeSentiment(text: string): Promise<{
+  sentiment: string;
+  score: number;
+  keyDrivers: string[];
+  riskIndicators: string[];
+  complianceTone: string;
+  analysis: string;
+}> {
+  try {
+    // Note: gpt-4o is the latest model as of May 13, 2024
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: `You are an expert in transfer pricing document analysis. Analyze the sentiment and tone of transfer pricing documents, focusing on:
+1. Overall sentiment (positive/negative/neutral)
+2. Key sentiment drivers
+3. Risk indicators
+4. Compliance tone
+5. Detailed analysis
+
+Format your response as a JSON object with these exact fields:
+{
+  "sentiment": "positive" | "negative" | "neutral",
+  "score": number between 0 and 1,
+  "keyDrivers": string[],
+  "riskIndicators": string[],
+  "complianceTone": string,
+  "analysis": string
+}`
+        },
+        { role: "user", content: text }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(response.choices[0].message.content);
+  } catch (error) {
+    console.error("Sentiment analysis error:", error);
+    throw new Error("Failed to analyze document sentiment");
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -52,84 +140,6 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Helper function to extract text from images
-async function extractTextFromImage(filePath: string): Promise<string> {
-  const worker = await createWorker();
-  await worker.loadLanguage('eng');
-  await worker.initialize('eng');
-  const { data: { text } } = await worker.recognize(filePath);
-  await worker.terminate();
-  return text;
-}
-
-// Helper function to extract text from PDF
-async function extractTextFromPDF(filePath: string): Promise<string> {
-  try {
-    const buffer = await fs.readFile(filePath);
-    const data = new Uint8Array(buffer);
-
-    // Load the PDF file
-    const pdf = await pdfjsLib.getDocument(data).promise;
-    let text = '';
-
-    // Extract text from each page
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      text += textContent.items.map((item: any) => item.str).join(' ') + '\n';
-    }
-
-    return text || "No text content could be extracted from PDF";
-  } catch (error: any) {
-    console.error("PDF extraction error:", error);
-    throw new Error(`Failed to extract text from PDF: ${error.message}`);
-  }
-}
-
-// Helper function to analyze sentiment
-async function analyzeSentiment(text: string): Promise<{
-  sentiment: string;
-  score: number;
-  keyDrivers: string[];
-  riskIndicators: string[];
-  complianceTone: string;
-  analysis: string;
-}> {
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: `You are an expert in transfer pricing document analysis. Analyze the sentiment and tone of transfer pricing documents, focusing on:
-1. Overall sentiment (positive/negative/neutral)
-2. Key sentiment drivers
-3. Risk indicators
-4. Compliance tone
-5. Detailed analysis
-
-Format your response as a JSON object with these exact fields:
-{
-  "sentiment": "positive" | "negative" | "neutral",
-  "score": number between 0 and 1,
-  "keyDrivers": string[],
-  "riskIndicators": string[],
-  "complianceTone": string,
-  "analysis": string
-}`
-        },
-        { role: "user", content: text }
-      ],
-      response_format: { type: "json_object" }
-    });
-
-    return JSON.parse(response.choices[0].message.content);
-  } catch (error) {
-    console.error("Sentiment analysis error:", error);
-    throw new Error("Failed to analyze document sentiment");
-  }
-}
-
 export function registerRoutes(app: Express): Server {
   setupAuth(app);
 
@@ -145,13 +155,19 @@ export function registerRoutes(app: Express): Server {
 
       console.log("Processing file:", {
         path: req.file.path,
-        type: fileType?.mime || req.file.mimetype
+        type: fileType?.mime || req.file.mimetype,
+        originalName: req.file.originalname
       });
 
       try {
-        if (fileType?.mime.startsWith('image/')) {
+        // Determine file type and extract content
+        if (fileType?.mime?.startsWith('image/') || req.file.mimetype.startsWith('image/')) {
           fileContent = await extractTextFromImage(req.file.path);
-        } else if (fileType?.mime === 'application/pdf' || req.file.mimetype === 'application/pdf') {
+        } else if (
+          fileType?.mime === 'application/pdf' || 
+          req.file.mimetype === 'application/pdf' ||
+          req.file.originalname.toLowerCase().endsWith('.pdf')
+        ) {
           fileContent = await extractTextFromPDF(req.file.path);
         } else {
           fileContent = await fs.readFile(req.file.path, 'utf-8');
@@ -172,6 +188,7 @@ export function registerRoutes(app: Express): Server {
         throw new Error(`Failed to analyze sentiment: ${analysisError.message}`);
       }
 
+      // Store the document and analysis in the database
       const [doc] = await db.insert(documents)
         .values({
           title: req.file.originalname,
