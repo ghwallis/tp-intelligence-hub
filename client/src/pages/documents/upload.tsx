@@ -111,7 +111,16 @@ export default function DocumentUpload() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          analysis: analysisResult,
+          analysis: {
+            ...analysisResult,
+            sentiment: analysisResult.sentiment,
+            structure: analysisResult.structure,
+            metadata: {
+              exportDate: new Date().toISOString(),
+              format,
+              documentType: 'transfer-pricing-analysis'
+            }
+          },
           format,
         }),
       });
