@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, HelpCircle, Download } from "lucide-react";
+import { Upload, HelpCircle, ArrowUpToLine } from "lucide-react";
 import { useState } from "react";
 import { SentimentAnalysis } from "@/components/sentiment-analysis";
 import { DocumentStructureAnalysis } from "@/components/document-structure-analysis";
@@ -169,7 +169,7 @@ export default function DocumentUpload() {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button disabled={isExporting}>
-                    <Download className="h-4 w-4 mr-2" />
+                    <ArrowUpToLine className="h-4 w-4 mr-2" />
                     {isExporting ? 'Exporting...' : 'Export Analysis'}
                   </Button>
                 </DropdownMenuTrigger>

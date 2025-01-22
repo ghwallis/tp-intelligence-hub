@@ -27,6 +27,7 @@ import {
   Calendar,
   FileClock,
   ScrollText,
+  FileUp, // Added for document generation
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/hooks/use-user";
@@ -47,7 +48,6 @@ const mainNavItems = [
   },
   {
     title: "Controversy Management",
-    href: "/controversy",
     icon: AlertTriangle,
     items: [
       {
@@ -115,6 +115,11 @@ const insightsNavItems = [
     title: "Compliance",
     icon: ShieldCheck,
     items: [
+      {
+        title: "Document Generation",
+        href: "/documents/generate",
+        icon: FileUp,
+      },
       {
         title: "OECD Pillar Two",
         href: "/compliance/pillar-two",
