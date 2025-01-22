@@ -1,0 +1,126 @@
+```mermaid
+graph TD
+    %% Client Layer
+    subgraph ClientLayer[Client Layer]
+        UI[Web Interface]
+        WS[WebSocket Client]
+        State[State Management]
+    end
+
+    %% Server Layer
+    subgraph ServerLayer[Server Layer]
+        API[Express API Server]
+        WSS[WebSocket Server]
+        Auth[Authentication Service]
+        DocProc[Document Processor]
+    end
+
+    %% Service Layer
+    subgraph ServiceLayer[Core Services]
+        AI[AI Processing Engine]
+        Doc[Document Management]
+        Analytics[Analytics Engine]
+        Compliance[Compliance Check]
+        Risk[Risk Assessment]
+        Collab[Collaboration Service]
+    end
+
+    %% Storage Layer
+    subgraph StorageLayer[Storage Layer]
+        PG[(PostgreSQL)]
+        DocDB[(DocumentDB)]
+        FileStore[(File Storage)]
+    end
+
+    %% External Services
+    subgraph ExternalServices[External Services]
+        OpenAI[OpenAI API]
+        MarketData[Market Data API]
+        OCR[OCR Service]
+    end
+
+    %% Connections
+    UI --> API
+    UI --> WS
+    WS --> WSS
+    API --> Auth
+    API --> ServiceLayer
+    WSS --> Collab
+    
+    %% Service Layer Connections
+    AI --> OpenAI
+    DocProc --> OCR
+    Analytics --> MarketData
+    
+    %% Database Connections
+    ServiceLayer --> PG
+    ServiceLayer --> DocDB
+    ServiceLayer --> FileStore
+
+    %% Process Flows
+    subgraph DocumentFlow[Document Processing Flow]
+        direction LR
+        Upload[Upload] --> Extract[Extract] --> Analyze[Analyze] --> Store[Store]
+    end
+
+    subgraph ComplianceFlow[Compliance Check Flow]
+        direction LR
+        Monitor[Monitor] --> Assess[Assess] --> Report[Report] --> Alert[Alert]
+    end
+
+    subgraph CollaborationFlow[Real-time Collaboration]
+        direction LR
+        Edit[Edit] --> Sync[Sync] --> Notify[Notify] --> Update[Update]
+    end
+
+    %% Features
+    subgraph Features[Key Features]
+        DocIntel[Document Intelligence]
+        RiskComp[Risk & Compliance]
+        BenchMark[Benchmarking]
+        MultiLang[Multi-language Support]
+        RealTime[Real-time Updates]
+        AIPowered[AI-Powered Analysis]
+    end
+
+    class ClientLayer,ServerLayer,ServiceLayer,StorageLayer,ExternalServices interface
+    class DocumentFlow,ComplianceFlow,CollaborationFlow process
+    class Features highlight
+```
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant A as API Server
+    participant AI as AI Service
+    participant DB as Database
+    participant Doc as Document Store
+
+    %% Document Upload Flow
+    U->>F: Upload Document
+    F->>A: POST /api/documents
+    A->>Doc: Store Document
+    A->>AI: Process Document
+    AI-->>A: Analysis Results
+    A->>DB: Store Metadata
+    A-->>F: Upload Complete
+    F-->>U: Show Success
+
+    %% Compliance Check Flow
+    U->>F: Request Compliance Check
+    F->>A: GET /api/compliance
+    A->>DB: Fetch Requirements
+    A->>AI: Analyze Compliance
+    AI-->>A: Compliance Report
+    A->>DB: Store Results
+    A-->>F: Return Results
+    F-->>U: Display Report
+
+    %% Real-time Collaboration
+    U->>F: Edit Document
+    F->>A: WS: document.edit
+    A->>DB: Update Document
+    A->>F: Broadcast Changes
+    F-->>U: Show Updates
+```
