@@ -112,14 +112,14 @@ export default function DocumentUpload() {
         },
         body: JSON.stringify({
           analysis: {
-            ...analysisResult,
             sentiment: analysisResult.sentiment,
             structure: analysisResult.structure,
             metadata: {
               exportDate: new Date().toISOString(),
               format,
               documentType: 'transfer-pricing-analysis'
-            }
+            },
+            rawAnalysis: analysisResult, // Include the complete analysis
           },
           format,
         }),

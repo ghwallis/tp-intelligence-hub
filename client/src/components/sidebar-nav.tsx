@@ -27,7 +27,7 @@ import {
   Calendar,
   FileClock,
   ScrollText,
-  FileUp, // Added for document generation
+  FileUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/hooks/use-user";
@@ -79,7 +79,7 @@ const mainNavItems = [
   },
   {
     title: "Documentation",
-    href: "/docs",
+    href: "/documentation",
     icon: FileText,
   },
 ];
@@ -201,7 +201,7 @@ export function SidebarNav() {
   const NavItem = ({ item, nested = false }: { item: any; nested?: boolean }) => {
     const Icon = item.icon;
     const hasItems = item.items && item.items.length > 0;
-    const isActive = location === item.href;
+    const isActive = item.href ? location === item.href : false;
     const isExpanded = expandedItems.includes(item.title);
 
     if (hasItems) {
@@ -273,9 +273,7 @@ export function SidebarNav() {
         <h2 className="text-lg font-semibold text-foreground">
           Transfer Pricing Hub
         </h2>
-        <p className="text-sm text-foreground/70">
-          Welcome, {user?.username}
-        </p>
+        <p className="text-sm text-foreground/70">Welcome, {user?.username}</p>
       </div>
       <ScrollArea className="flex-1 px-3">
         <div className="space-y-6 py-2">
