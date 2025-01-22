@@ -1,125 +1,127 @@
 # Transfer Pricing Intelligence Platform
 
-![Transfer Pricing Hub](./banner.png)
+A sophisticated AI-powered platform revolutionizing transfer pricing compliance and risk management for global finance professionals.
 
-A sophisticated AI-powered platform that revolutionizes transfer pricing compliance and risk management for global finance professionals. This enterprise-grade solution combines advanced analytics, document intelligence, and real-time collaboration to streamline complex transfer pricing workflows.
+## 🚀 Features
 
-## 🌟 Key Features
+### Core Capabilities
+- **Multi-language Document Processing**
+  - Advanced OCR and text extraction
+  - Automated document classification
+  - Real-time translation capabilities
 
-### Document Intelligence
-- **Smart Document Upload & Analysis**: AI-powered document processing with automatic language detection and translation
-- **Multi-format Document Generation**: Automated generation of compliant transfer pricing documentation
-- **Version Control**: Track changes and maintain document history with advanced versioning
-- **Entity Management**: Comprehensive entity relationship tracking and documentation
+- **AI-Powered Analytics**
+  - Intelligent document summarization
+  - Risk pattern detection
+  - Compliance assessment automation
+  - Benchmark analysis with market data
 
-### Risk & Compliance
-- **Controversy Management**: 
-  - Notice tracking and response management
-  - Audit defense documentation
-  - Timeline tracking for regulatory deadlines
-  - Dispute resolution workflow
-- **Compliance Monitoring**:
-  - BEPS Action Plans tracking
-  - OECD Pillar Two compliance
-  - EU ATAD requirements
-  - APA management
-- **Risk Assessment**: AI-driven risk scoring and analysis
+- **Collaborative Workflow**
+  - Real-time document collaboration
+  - Role-based access control
+  - Audit trail and version control
+  - Integrated communication tools
 
-### Analytics & Insights
-- **Benchmarking**: Comprehensive comparative analysis tools
-- **Market Analysis**: Real-time market data integration
-- **AI Insights**: OpenAI-powered analysis and recommendations
-- **Custom Analytics**: Tailored reporting and visualization
+### Technical Stack
+- **Frontend**: React with TypeScript
+  - Shadcn UI components
+  - Real-time updates via WebSocket
+  - Responsive design for all devices
+  - Dark/light theme support
 
-### Collaboration
-- **Real-time Collaboration**: WebSocket-based multi-user editing
-- **Team Management**: Role-based access control
-- **Workflow Automation**: Customizable approval workflows
-- **Communication Tools**: Integrated messaging and notifications
+- **Backend**: Node.js
+  - Express.js server
+  - Secure authentication system
+  - RESTful API architecture
+  - WebSocket integration
+
+- **Database**: PostgreSQL + DocumentDB
+  - Drizzle ORM for relational data
+  - MongoDB for document storage
+  - Efficient data indexing
+  - ACID compliance
+
+- **AI Integration**
+  - OpenAI GPT-4 for text analysis
+  - Document OCR processing
+  - Multi-language support
+  - Custom ML models for pricing analysis
 
 ## 🏗 Architecture
 
-### Technical Stack
+### Component Overview
 ```
-Frontend:
-- React with TypeScript
-- Shadcn UI Components
-- TanStack Query for data fetching
-- WebSocket for real-time features
-- Wouter for routing
-
-Backend:
-- Node.js + Express
-- PostgreSQL with Drizzle ORM
-- OpenAI API integration
-- WebSocket Server
-
-Infrastructure:
-- Replit hosting
-- PostgreSQL database
-- Document storage
-```
-
-### System Components
-```mermaid
-graph TD
-    A[Web Interface] -->|API Requests| B[Express Backend]
-    A -->|WebSocket| C[Real-time Server]
-    B -->|Query/Update| D[PostgreSQL Database]
-    B -->|AI Processing| E[OpenAI API]
-    B -->|Document Processing| F[Document Service]
-    F -->|Storage| G[Document Store]
-    H[Authentication Service] -->|Verify| B
+┌─────────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│    Client Layer     │     │   Server Layer   │     │  Storage Layer  │
+├─────────────────────┤     ├──────────────────┤     ├─────────────────┤
+│ - React Components  │     │ - Express Server │     │ - PostgreSQL DB │
+│ - State Management │ ←→  │ - Authentication │ ←→  │ - Document DB   │
+│ - UI/UX Components │     │ - API Gateway    │     │ - File Storage  │
+│ - WebSocket Client │     │ - WebSocket      │     │                 │
+└─────────────────────┘     └──────────────────┘     └─────────────────┘
+           ↑                        ↑                         ↑
+           │                        │                         │
+           └────────────┬──────────┴─────────────┬──────────┘
+                       │     Service Layer       │
+                       ├──────────────────────────┤
+                       │ - AI Processing         │
+                       │ - Document Management   │
+                       │ - Analytics Engine      │
+                       │ - Compliance Check      │
+                       └──────────────────────────┘
 ```
 
-## 📊 Data Models
-
-### Core Entities
+### Data Model
 ```sql
--- Entity Management
+-- Core Entities
 Entities {
   id: UUID [pk]
   name: String
-  type: Enum [CostPlus, Resale, Distributor, etc.]
+  type: String
   jurisdiction: String
-  riskProfile: JSON
+  metadata: JSON
   created_at: Timestamp
   updated_at: Timestamp
 }
 
--- Document Management
+-- Documents
 Documents {
   id: UUID [pk]
+  entityId: UUID [ref: > Entities.id]
   title: String
   content: Text
   metadata: JSON
-  version: Integer
-  status: Enum [Draft, Review, Final]
-  entityId: UUID [ref: > Entities.id]
+  status: String
   created_at: Timestamp
   updated_at: Timestamp
-  last_modified_by: UUID [ref: > Users.id]
 }
 
--- Compliance Records
-ComplianceRecords {
+-- Compliance Checks
+ComplianceChecks {
   id: UUID [pk]
   entityId: UUID [ref: > Entities.id]
-  type: Enum [BEPS, PillarTwo, EUATAD]
+  checkType: String
   status: String
-  dueDate: Date
-  submissions: JSON
-  assessor: UUID [ref: > Users.id]
+  results: JSON
   created_at: Timestamp
   updated_at: Timestamp
 }
 
--- Controversy Management
+-- Transfer Pricing Analysis
+TPAnalysis {
+  id: UUID [pk]
+  entityId: UUID [ref: > Entities.id]
+  analysisType: String
+  data: JSON
+  conclusions: Text
+  created_at: Timestamp
+  updated_at: Timestamp
+}
+
+-- Notices
 Notices {
   id: UUID [pk]
   entityId: UUID [ref: > Entities.id]
-  title: String
-  content: Text
   noticeType: String
   jurisdiction: String
   receivedDate: Date
