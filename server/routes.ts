@@ -188,10 +188,3 @@ export function registerRoutes(app: Express): Server {
 
   return httpServer;
 }
-
-// Type definition for CollaborationMessage
-interface CollaborationMessage {
-  type: 'join' | 'leave' | 'cursor' | 'edit' | 'comment';
-  userId: number;
-  content?: any;
-}
