@@ -11,9 +11,9 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { fileTypeFromFile } from 'file-type';
+import { fileTypeFromBuffer } from 'file-type';
 import { createWorker } from 'tesseract.js';
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+import * as pdfjsLib from 'pdfjs-dist';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -52,7 +52,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Helper function to extract text from images using Tesseract
+// Helper function to extract text from images
 async function extractTextFromImage(filePath: string): Promise<string> {
   const worker = await createWorker();
   await worker.loadLanguage('eng');
@@ -65,16 +65,18 @@ async function extractTextFromImage(filePath: string): Promise<string> {
 // Helper function to extract text from PDF
 async function extractTextFromPDF(filePath: string): Promise<string> {
   try {
-    const data = await fs.readFile(filePath);
-    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(data) }).promise;
+    const buffer = await fs.readFile(filePath);
+    const data = new Uint8Array(buffer);
+
+    // Load the PDF file
+    const pdf = await pdfjsLib.getDocument(data).promise;
     let text = '';
 
+    // Extract text from each page
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      text += content.items
-        .map((item: any) => item.str)
-        .join(' ') + '\n';
+      const textContent = await page.getTextContent();
+      text += textContent.items.map((item: any) => item.str).join(' ') + '\n';
     }
 
     return text || "No text content could be extracted from PDF";
@@ -137,7 +139,8 @@ export function registerRoutes(app: Express): Server {
     if (!req.file) return res.status(400).send("No file uploaded");
 
     try {
-      const fileType = await fileTypeFromFile(req.file.path);
+      const fileBuffer = await fs.readFile(req.file.path);
+      const fileType = await fileTypeFromBuffer(fileBuffer);
       let fileContent = '';
 
       console.log("Processing file:", {
@@ -148,14 +151,14 @@ export function registerRoutes(app: Express): Server {
       try {
         if (fileType?.mime.startsWith('image/')) {
           fileContent = await extractTextFromImage(req.file.path);
-        } else if (fileType?.mime === 'application/pdf') {
+        } else if (fileType?.mime === 'application/pdf' || req.file.mimetype === 'application/pdf') {
           fileContent = await extractTextFromPDF(req.file.path);
         } else {
           fileContent = await fs.readFile(req.file.path, 'utf-8');
         }
 
         console.log("Content extracted successfully, length:", fileContent.length);
-      } catch (extractError) {
+      } catch (extractError: any) {
         console.error("Content extraction error:", extractError);
         throw new Error(`Failed to extract content: ${extractError.message}`);
       }
@@ -164,7 +167,7 @@ export function registerRoutes(app: Express): Server {
       try {
         sentimentAnalysis = await analyzeSentiment(fileContent);
         console.log("Sentiment analysis completed");
-      } catch (analysisError) {
+      } catch (analysisError: any) {
         console.error("Sentiment analysis error:", analysisError);
         throw new Error(`Failed to analyze sentiment: ${analysisError.message}`);
       }
