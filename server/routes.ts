@@ -445,6 +445,119 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  // Add this new document generation endpoint
+  app.post("/api/documents/generate", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");
+
+    const { entities, year, period, entityType } = req.body;
+
+    if (!entities?.length || !year || !period || !entityType) {
+      return res.status(400).send("Missing required fields");
+    }
+
+    try {
+      // Create a new PDF document
+      const doc = new pdfkit();
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename=transfer-pricing-documentation.pdf');
+
+      // Pipe the PDF document to the response
+      doc.pipe(res);
+
+      // Add content to the PDF
+      doc
+        .fontSize(24)
+        .text('Transfer Pricing Documentation', { align: 'center' })
+        .moveDown()
+        .fontSize(16)
+        .text(`Period: ${period} ${year}`, { align: 'center' })
+        .moveDown()
+        .fontSize(14)
+        .text(`Entity Type: ${entityType}`, { align: 'center' })
+        .moveDown()
+        .moveDown();
+
+      // Add entities section
+      doc
+        .fontSize(16)
+        .text('Selected Entities:', { underline: true })
+        .moveDown();
+
+      entities.forEach((entity: string) => {
+        doc
+          .fontSize(12)
+          .text(`• ${entity}`)
+          .moveDown();
+      });
+
+      // Add standard sections
+      const sections = [
+        {
+          title: 'Executive Summary',
+          content: 'This transfer pricing documentation has been prepared in accordance with local and international transfer pricing regulations...'
+        },
+        {
+          title: 'Industry Analysis',
+          content: 'Overview of relevant industry factors and market conditions affecting transfer pricing policies...'
+        },
+        {
+          title: 'Functional Analysis',
+          content: `Analysis of functions performed, assets employed, and risks assumed by ${entities.join(', ')}...`
+        },
+        {
+          title: 'Transfer Pricing Method Selection',
+          content: `Based on the ${entityType} business model, the selected transfer pricing method is...`
+        },
+        {
+          title: 'Economic Analysis',
+          content: 'Detailed analysis of comparable companies and financial indicators...'
+        }
+      ];
+
+      sections.forEach(section => {
+        doc
+          .moveDown()
+          .fontSize(16)
+          .text(section.title, { underline: true })
+          .moveDown()
+          .fontSize(12)
+          .text(section.content)
+          .moveDown();
+      });
+
+      // Save the document details in the database
+      await db.insert(documents).values({
+        title: `Transfer Pricing Documentation - ${period} ${year}`,
+        userId: req.user.id,
+        content: JSON.stringify({
+          entities,
+          year,
+          period,
+          entityType,
+          generatedAt: new Date().toISOString()
+        }),
+        status: 'generated',
+        metadata: {
+          documentType: 'transfer_pricing_documentation',
+          year,
+          period,
+          entityType,
+          entities
+        }
+      });
+
+      // Finalize the PDF
+      doc.end();
+
+    } catch (error: any) {
+      console.error("Document generation error:", error);
+      res.status(500).json({
+        error: "Failed to generate document",
+        details: error.message
+      });
+    }
+  });
+
   // Add this new endpoint to the registerRoutes function
   app.post("/api/documents/export", async (req, res) => {
     if (!req.isAuthenticated()) return res.status(401).send("Unauthorized");

@@ -40,6 +40,7 @@ import Collaboration from "@/pages/collaboration";
 import Deadlines from "@/pages/deadlines";
 import VersionControl from "@/pages/version-control";
 import Workflow from "@/pages/workflow";
+import DocumentGenerate from "@/pages/documents/generate";
 
 
 function Router() {
@@ -95,6 +96,7 @@ function Router() {
               <Route path="/deadlines" component={Deadlines} />
               <Route path="/version-control" component={VersionControl} />
               <Route path="/workflow" component={Workflow} />
+              <Route path="/documents/generate" component={DocumentGenerate} />
               <Route component={NotFound} />
             </Switch>
           </div>
